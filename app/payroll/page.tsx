@@ -37,9 +37,9 @@ interface PayrollSettings {
   diligenceBonusEnabled: boolean
   sickWithCertExempt: boolean
   monthlyMaxAbsent: number
-  tier1Threshold: number; tier1Amount: number
-  tier2Threshold: number; tier2Amount: number
-  tier3Threshold: number; tier3Amount: number
+  diligenceBaseAmount: number
+  diligenceStepAmount: number
+  diligenceMaxDays: number
 }
 
 type SortKey = 'name' | 'employmentType' | 'workingDays' | 'daysPresent' | 'daysAbsent' | 'daysSickCert' | 'daysSickNoCert' | 'daysHalfDay' | 'basePay' | 'diligenceBonus' | 'totalPay'
@@ -52,10 +52,10 @@ export default function PayrollPage() {
   const [paySettings, setPaySettings] = useState<PayrollSettings>({
     diligenceBonusEnabled: true,
     sickWithCertExempt: true,
-    monthlyMaxAbsent: 5,
-    tier1Threshold: 1, tier1Amount: 1000,
-    tier2Threshold: 3, tier2Amount: 800,
-    tier3Threshold: 5, tier3Amount: 500,
+    monthlyMaxAbsent: 3.5,
+    diligenceBaseAmount: 1000,
+    diligenceStepAmount: 150,
+    diligenceMaxDays: 3,
   })
   const [loading, setLoading] = useState(false)
   const [noDataWarning, setNoDataWarning] = useState('')
@@ -327,70 +327,98 @@ export default function PayrollPage() {
                 </label>
               </div>
 
+              {/* Step-based bonus config */}
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-gray-700">เกณฑ์เบี้ยขยัน <span className="font-normal text-gray-400">(รายเดือนเท่านั้น)</span></p>
+
+                {/* 3 config fields */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="p-3 rounded-xl border border-gray-100 bg-gray-50 text-center">
+                    <p className="text-xs text-gray-500 mb-1.5">บาทเมื่อไม่หยุด</p>
+                    <input
+                      type="number" min={0} step={50}
+                      className="w-full text-center font-semibold text-sm"
+                      value={paySettings.diligenceBaseAmount}
+                      onChange={(e) => setPaySettings({ ...paySettings, diligenceBaseAmount: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div className="p-3 rounded-xl border border-gray-100 bg-gray-50 text-center">
+                    <p className="text-xs text-gray-500 mb-1.5">ลดต่อ 0.5 วัน</p>
+                    <input
+                      type="number" min={0} step={50}
+                      className="w-full text-center font-semibold text-sm"
+                      value={paySettings.diligenceStepAmount}
+                      onChange={(e) => setPaySettings({ ...paySettings, diligenceStepAmount: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div className="p-3 rounded-xl border border-gray-100 bg-gray-50 text-center">
+                    <p className="text-xs text-gray-500 mb-1.5">หยุดได้สูงสุด (วัน)</p>
+                    <input
+                      type="number" min={0} step={0.5}
+                      className="w-full text-center font-semibold text-sm"
+                      value={paySettings.diligenceMaxDays}
+                      onChange={(e) => setPaySettings({ ...paySettings, diligenceMaxDays: Number(e.target.value) })}
+                    />
+                  </div>
+                </div>
+
+                {/* Preview table — computed from inputs */}
+                <div className="rounded-xl border border-gray-200 overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-blue-50 text-blue-700">
+                        <th className="px-3 py-2 text-left font-medium">หยุด (วัน)</th>
+                        <th className="px-3 py-2 text-right font-medium">เบี้ยขยัน (บาท)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {(() => {
+                        const rows = []
+                        const base = paySettings.diligenceBaseAmount
+                        const step = paySettings.diligenceStepAmount
+                        const max = paySettings.diligenceMaxDays
+                        for (let d = 0; d <= max; d += 0.5) {
+                          const steps = Math.floor(d / 0.5)
+                          const bonus = Math.max(0, base - steps * step)
+                          rows.push(
+                            <tr key={d} className={d === 0 ? 'bg-green-50' : 'hover:bg-gray-50'}>
+                              <td className="px-3 py-2 text-gray-600">{d === 0 ? 'ไม่หยุด' : d % 1 === 0 ? `${d} วัน` : `${d} วัน`}</td>
+                              <td className="px-3 py-2 text-right font-semibold text-green-700">฿{bonus.toLocaleString()}</td>
+                            </tr>
+                          )
+                        }
+                        rows.push(
+                          <tr key="over" className="bg-red-50">
+                            <td className="px-3 py-2 text-red-400 italic">หยุดเกิน {max} วัน</td>
+                            <td className="px-3 py-2 text-right font-semibold text-red-400">฿0</td>
+                          </tr>
+                        )
+                        return rows
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-xs text-gray-400">* พนักงานรายวันไม่ได้รับเบี้ยขยัน</p>
+              </div>
+
               {/* Monthly max absent */}
-              <div className="p-3 rounded-xl border border-gray-100 bg-gray-50">
+              <div className="p-3 rounded-xl border border-orange-100 bg-orange-50">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-medium text-gray-800">วันขาดสูงสุดก่อนคิดรายวัน</p>
-                    <p className="text-xs text-gray-400 mt-0.5">สำหรับพนักงานรายเดือน — หากขาดเกินจะเปลี่ยนเป็นคิดรายวัน</p>
+                    <p className="text-sm font-medium text-gray-800">หยุด/ลา เกินนี้ → คิดรายวัน</p>
+                    <p className="text-xs text-gray-400 mt-0.5">สำหรับพนักงานรายเดือน — หากหยุดเกินจะเปลี่ยนเป็นคิดรายวันทันที</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <input
                       type="number"
                       className="w-16 text-center"
-                      min={0}
+                      min={0} step={0.5}
                       value={paySettings.monthlyMaxAbsent}
                       onChange={(e) => setPaySettings({ ...paySettings, monthlyMaxAbsent: Number(e.target.value) })}
                     />
                     <span className="text-sm text-gray-500">วัน</span>
                   </div>
                 </div>
-              </div>
-
-              {/* Tiered bonus */}
-              <div>
-                <p className="text-sm font-semibold text-gray-700 mb-2">เบี้ยขยันแบบขั้นบันได <span className="font-normal text-gray-400">(รายเดือนเท่านั้น)</span></p>
-                <div className="rounded-xl border border-gray-200 overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-blue-50 text-blue-700">
-                        <th className="px-4 py-2.5 text-left font-medium">ระดับ</th>
-                        <th className="px-4 py-2.5 text-left font-medium">ขาด ≤ (วัน)</th>
-                        <th className="px-4 py-2.5 text-left font-medium">เบี้ยขยัน (บาท)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {([
-                        { label: '1', thKey: 'tier1Threshold' as const, amKey: 'tier1Amount' as const },
-                        { label: '2', thKey: 'tier2Threshold' as const, amKey: 'tier2Amount' as const },
-                        { label: '3', thKey: 'tier3Threshold' as const, amKey: 'tier3Amount' as const },
-                      ]).map((tier) => (
-                        <tr key={tier.label} className="hover:bg-gray-50">
-                          <td className="px-4 py-2.5 text-gray-500 font-medium">ระดับ {tier.label}</td>
-                          <td className="px-4 py-2.5">
-                            <input
-                              type="number" min={0} className="w-16 text-center"
-                              value={paySettings[tier.thKey]}
-                              onChange={(e) => setPaySettings({ ...paySettings, [tier.thKey]: Number(e.target.value) })}
-                            />
-                          </td>
-                          <td className="px-4 py-2.5">
-                            <input
-                              type="number" min={0} className="w-24"
-                              value={paySettings[tier.amKey]}
-                              onChange={(e) => setPaySettings({ ...paySettings, [tier.amKey]: Number(e.target.value) })}
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                      <tr className="bg-gray-50">
-                        <td className="px-4 py-2.5 text-gray-400 italic" colSpan={2}>ขาด &gt; ระดับ 3</td>
-                        <td className="px-4 py-2.5 text-gray-400 font-medium">฿0</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                <p className="text-xs text-gray-400 mt-2">* พนักงานรายวันไม่ได้รับเบี้ยขยัน</p>
               </div>
             </div>
 

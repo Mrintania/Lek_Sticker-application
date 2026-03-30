@@ -61,9 +61,10 @@ export default function AdminUsersPage() {
   const [deleteTarget, setDeleteTarget] = useState<UserRecord | null>(null)
   const [deleteError, setDeleteError] = useState('')
   const [deleting, setDeleting] = useState(false)
+  const [showInactive, setShowInactive] = useState(false)
 
   const loadUsers = useCallback(() => {
-    fetch('/api/users').then(r => r.json()).then(setUsers).catch(() => {})
+    fetch('/api/users?includeInactive=true').then(r => r.json()).then(setUsers).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -185,8 +186,12 @@ export default function AdminUsersPage() {
   }), [users, sortKey, sortDir])
 
   const activeCount = users.filter(u => u.is_active).length
+  const inactiveCount = users.filter(u => !u.is_active).length
   const adminCount = users.filter(u => u.role === 'admin' && u.is_active).length
   const managerCount = users.filter(u => u.role === 'manager' && u.is_active).length
+
+  // กรองตาม showInactive
+  const displayedUsers = sortedUsers.filter(u => showInactive || u.is_active)
 
   if (loading) return <div className="page-container text-center text-gray-400">⏳ กำลังโหลด...</div>
 
@@ -196,14 +201,29 @@ export default function AdminUsersPage() {
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900">จัดการผู้ใช้งาน</h2>
           <p className="text-gray-500 mt-1 text-sm">
-            ทั้งหมด {activeCount} คน | Admin {adminCount} | Manager {managerCount}
+            Active {activeCount} คน | Admin {adminCount} | Manager {managerCount}
+            {inactiveCount > 0 && <span className="text-gray-400"> | Inactive {inactiveCount} คน</span>}
           </p>
         </div>
-        <button className="btn-primary self-start sm:self-auto" onClick={openAdd}>+ เพิ่มผู้ใช้</button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          {inactiveCount > 0 && (
+            <button
+              onClick={() => setShowInactive(v => !v)}
+              className={`text-sm px-3 py-2 rounded-lg border transition-colors ${
+                showInactive
+                  ? 'bg-gray-100 border-gray-300 text-gray-700'
+                  : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+              }`}
+            >
+              {showInactive ? '🙈 ซ่อน Inactive' : `👁 แสดง Inactive (${inactiveCount})`}
+            </button>
+          )}
+          <button className="btn-primary" onClick={openAdd}>+ เพิ่มผู้ใช้</button>
+        </div>
       </div>
 
       <div className="card !p-0 overflow-hidden">
-        {users.length === 0 ? (
+        {displayedUsers.length === 0 ? (
           <p className="text-center text-gray-400 py-8">ไม่มีข้อมูลผู้ใช้</p>
         ) : (
           <div className="overflow-x-auto">
@@ -225,7 +245,7 @@ export default function AdminUsersPage() {
                 <th className="table-header text-center">จัดการ</th>
               </tr></thead>
               <tbody>
-                {sortedUsers.map((u) => (
+                {displayedUsers.map((u) => (
                   <tr key={u.id} className={`hover:bg-gray-50 ${!u.is_active ? 'opacity-50' : ''}`}>
                     <td className="table-cell font-mono font-medium">{u.username}</td>
                     <td className="table-cell text-gray-700">{u.full_name || '-'}</td>

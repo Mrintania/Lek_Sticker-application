@@ -17,6 +17,9 @@ export async function GET(req: NextRequest) {
     LEFT JOIN employees e ON l.employee_id = e.employee_id WHERE 1=1`
   const params: string[] = []
 
+  // กรองพนักงาน Inactive ออก (e.is_active IS NULL = พนักงานไม่มีในตาราง employees ก็ยังแสดง)
+  query += ' AND (e.is_active = 1 OR e.is_active IS NULL)'
+
   // User role: only see own leaves (never see deleted)
   if (user.role === 'user' && user.employeeId) {
     query += ' AND l.employee_id = ? AND l.deleted_at IS NULL'

@@ -23,8 +23,15 @@ export async function GET(req: NextRequest) {
   const user = getUserFromRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const { searchParams } = new URL(req.url)
+  // includeInactive=true สำหรับหน้าจัดการพนักงาน (admin/manager เท่านั้น)
+  const includeInactive = searchParams.get('includeInactive') === 'true' && canManage(user.role)
+
   const db = getDb()
-  const rows = db.prepare('SELECT * FROM employees ORDER BY name').all()
+  const sql = includeInactive
+    ? 'SELECT * FROM employees ORDER BY name'
+    : 'SELECT * FROM employees WHERE is_active = 1 ORDER BY name'
+  const rows = db.prepare(sql).all()
   return NextResponse.json(rows.map(mapEmployee))
 }
 
