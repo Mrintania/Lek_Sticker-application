@@ -1,0 +1,82 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { getDb } from '@/lib/db'
+import { getUserFromRequest, canManage } from '@/lib/auth'
+import { logAudit, getIp } from '@/lib/audit'
+
+export async function GET(req: NextRequest) {
+  const user = getUserFromRequest(req)
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const db = getDb()
+  const { searchParams } = new URL(req.url)
+  const status = searchParams.get('status')
+  const includeDeleted = searchParams.get('includeDeleted') === 'true'
+  const isManager = user.role === 'admin' || user.role === 'manager'
+
+  let query = `SELECT l.*, e.name as employee_name FROM leaves l
+    LEFT JOIN employees e ON l.employee_id = e.employee_id WHERE 1=1`
+  const params: string[] = []
+
+  // User role: only see own leaves (never see deleted)
+  if (user.role === 'user' && user.employeeId) {
+    query += ' AND l.employee_id = ? AND l.deleted_at IS NULL'
+    params.push(user.employeeId)
+  } else if (isManager && includeDeleted) {
+    // Admin/manager with flag: see everything (active + deleted)
+  } else {
+    // Admin/manager without flag: only active leaves
+    query += ' AND l.deleted_at IS NULL'
+  }
+
+  if (status) {
+    query += ' AND l.status = ?'
+    params.push(status)
+  }
+
+  query += ' ORDER BY l.date DESC'
+  const leaves = db.prepare(query).all(...params)
+  return NextResponse.json(leaves)
+}
+
+export async function POST(req: NextRequest) {
+  const user = getUserFromRequest(req)
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const body = await req.json()
+  const { employeeId, leaveType, date, hasMedicalCert, reason } = body
+
+  // User can only submit own leave
+  const targetEmpId = user.role === 'user' ? user.employeeId : employeeId
+  if (!targetEmpId) return NextResponse.json({ error: 'ไม่พบรหัสพนักงาน' }, { status: 400 })
+
+  const db = getDb()
+
+  // ── ห้ามขอลาในวันที่เริ่มงานไปแล้ว ──────────────────────────────────────
+  const now = new Date()
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+
+  if (date === todayStr) {
+    const ws = db.prepare('SELECT work_start_time FROM work_settings WHERE id = 1').get() as { work_start_time: string } | undefined
+    if (ws?.work_start_time) {
+      const [startHour, startMin] = ws.work_start_time.split(':').map(Number)
+      const workStartMinutes = startHour * 60 + startMin
+      const currentMinutes = now.getHours() * 60 + now.getMinutes()
+      if (currentMinutes > workStartMinutes) {
+        return NextResponse.json({
+          error: `ไม่สามารถขอลาในวันนี้ได้ เนื่องจากเวลาทำงานเริ่มแล้ว (${ws.work_start_time} น.)`,
+        }, { status: 400 })
+      }
+    }
+  }
+
+  // sick type always has medical cert; full_day never does
+  const certValue = leaveType === 'sick' ? 1 : 0
+  const result = db.prepare(`INSERT INTO leaves (employee_id, leave_type, date, has_medical_cert, reason)
+    VALUES (?, ?, ?, ?, ?)`).run(targetEmpId, leaveType, date, certValue, reason || null)
+
+  logAudit(db, user.username, 'leave.create', 'leave', String(result.lastInsertRowid), {
+    employeeId: targetEmpId, leaveType, date, reason: reason || null,
+  }, getIp(req))
+
+  return NextResponse.json({ success: true, id: result.lastInsertRowid })
+}
