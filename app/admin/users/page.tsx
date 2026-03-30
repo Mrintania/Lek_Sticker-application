@@ -61,9 +61,10 @@ export default function AdminUsersPage() {
   const [deleteTarget, setDeleteTarget] = useState<UserRecord | null>(null)
   const [deleteError, setDeleteError] = useState('')
   const [deleting, setDeleting] = useState(false)
+  const [showInactive, setShowInactive] = useState(false)
 
   const loadUsers = useCallback(() => {
-    fetch('/api/users').then(r => r.json()).then(setUsers).catch(() => {})
+    fetch('/api/users?includeInactive=true').then(r => r.json()).then(setUsers).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -185,25 +186,44 @@ export default function AdminUsersPage() {
   }), [users, sortKey, sortDir])
 
   const activeCount = users.filter(u => u.is_active).length
+  const inactiveCount = users.filter(u => !u.is_active).length
   const adminCount = users.filter(u => u.role === 'admin' && u.is_active).length
   const managerCount = users.filter(u => u.role === 'manager' && u.is_active).length
 
-  if (loading) return <div className="p-8 text-center text-gray-400">⏳ กำลังโหลด...</div>
+  // กรองตาม showInactive
+  const displayedUsers = sortedUsers.filter(u => showInactive || u.is_active)
+
+  if (loading) return <div className="page-container text-center text-gray-400">⏳ กำลังโหลด...</div>
 
   return (
-    <div className="p-8 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="page-container">
+      <div className="page-header">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">จัดการผู้ใช้งาน</h2>
-          <p className="text-gray-500 mt-1">
-            ทั้งหมด {activeCount} คน | Admin {adminCount} | Manager {managerCount}
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">จัดการผู้ใช้งาน</h2>
+          <p className="text-gray-500 mt-1 text-sm">
+            Active {activeCount} คน | Admin {adminCount} | Manager {managerCount}
+            {inactiveCount > 0 && <span className="text-gray-400"> | Inactive {inactiveCount} คน</span>}
           </p>
         </div>
-        <button className="btn-primary" onClick={openAdd}>+ เพิ่มผู้ใช้</button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          {inactiveCount > 0 && (
+            <button
+              onClick={() => setShowInactive(v => !v)}
+              className={`text-sm px-3 py-2 rounded-lg border transition-colors ${
+                showInactive
+                  ? 'bg-gray-100 border-gray-300 text-gray-700'
+                  : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+              }`}
+            >
+              {showInactive ? '🙈 ซ่อน Inactive' : `👁 แสดง Inactive (${inactiveCount})`}
+            </button>
+          )}
+          <button className="btn-primary" onClick={openAdd}>+ เพิ่มผู้ใช้</button>
+        </div>
       </div>
 
-      <div className="card">
-        {users.length === 0 ? (
+      <div className="card !p-0 overflow-hidden">
+        {displayedUsers.length === 0 ? (
           <p className="text-center text-gray-400 py-8">ไม่มีข้อมูลผู้ใช้</p>
         ) : (
           <div className="overflow-x-auto">
@@ -225,7 +245,7 @@ export default function AdminUsersPage() {
                 <th className="table-header text-center">จัดการ</th>
               </tr></thead>
               <tbody>
-                {sortedUsers.map((u) => (
+                {displayedUsers.map((u) => (
                   <tr key={u.id} className={`hover:bg-gray-50 ${!u.is_active ? 'opacity-50' : ''}`}>
                     <td className="table-cell font-mono font-medium">{u.username}</td>
                     <td className="table-cell text-gray-700">{u.full_name || '-'}</td>
@@ -315,12 +335,12 @@ export default function AdminUsersPage() {
 
       {/* Add/Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
-            <div className="p-6 border-b border-gray-100">
+        <div className="modal-backdrop">
+          <div className="modal-panel">
+            <div className="p-4 sm:p-6 border-b border-gray-100">
               <h3 className="text-lg font-bold">{editId ? 'แก้ไขผู้ใช้' : 'เพิ่มผู้ใช้ใหม่'}</h3>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-4 sm:p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Username *</label>
                 <input
@@ -382,7 +402,7 @@ export default function AdminUsersPage() {
               </div>
               {formError && <p className="text-red-600 text-sm">⚠️ {formError}</p>}
             </div>
-            <div className="p-6 border-t border-gray-100 flex justify-end gap-3">
+            <div className="p-4 sm:p-6 border-t border-gray-100 flex justify-end gap-3">
               <button className="btn-secondary" onClick={() => setShowModal(false)}>ยกเลิก</button>
               <button className="btn-primary" onClick={handleSave} disabled={saving}>
                 {saving ? 'กำลังบันทึก...' : editId ? 'บันทึก' : 'สร้างผู้ใช้'}
@@ -394,8 +414,8 @@ export default function AdminUsersPage() {
 
       {/* Delete Confirmation Modal */}
       {deleteTarget && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+        <div className="modal-backdrop">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-sm p-4 sm:p-6 space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 bg-red-100 rounded-full flex items-center justify-center shrink-0">
                 <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -453,8 +473,8 @@ export default function AdminUsersPage() {
 
       {/* Reset Password Modal */}
       {resetPasswordId && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+        <div className="modal-backdrop">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-sm p-4 sm:p-6">
             <h3 className="text-lg font-bold mb-4">เปลี่ยน Password</h3>
             <input
               type="password"

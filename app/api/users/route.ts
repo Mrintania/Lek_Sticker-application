@@ -8,8 +8,15 @@ export async function GET(req: NextRequest) {
   const user = getUserFromRequest(req)
   if (!user || !isAdmin(user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
+  const { searchParams } = new URL(req.url)
+  // includeInactive=true สำหรับหน้าจัดการผู้ใช้ (admin เท่านั้น)
+  const includeInactive = searchParams.get('includeInactive') === 'true'
+
   const db = getDb()
-  const users = db.prepare('SELECT id, username, role, employee_id, full_name, is_active, created_at FROM users').all()
+  const sql = includeInactive
+    ? 'SELECT id, username, role, employee_id, full_name, is_active, created_at FROM users ORDER BY username'
+    : 'SELECT id, username, role, employee_id, full_name, is_active, created_at FROM users WHERE is_active = 1 ORDER BY username'
+  const users = db.prepare(sql).all()
   return NextResponse.json(users)
 }
 

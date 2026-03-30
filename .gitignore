@@ -42,3 +42,7 @@ tsconfig.tsbuildinfo
 
 # Vercel
 .vercel
+
+# ngrok (อาจมี authtoken — ไม่ควร commit)
+ngrok.yml
+.ngrok.yml

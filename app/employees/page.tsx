@@ -134,19 +134,20 @@ export default function EmployeesPage() {
   }
 
   return (
-    <div className="p-8 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="page-container">
+      {/* Header */}
+      <div className="page-header">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">จัดการพนักงาน</h2>
-          <p className="text-gray-500 mt-1">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">จัดการพนักงาน</h2>
+          <p className="text-gray-500 mt-1 text-sm">
             ทั้งหมด {activeCount} คน | รายวัน {dailyCount} คน | รายเดือน {monthlyCount} คน
           </p>
         </div>
-        {canManage && <button className="btn-primary" onClick={openAdd}>+ เพิ่มพนักงาน</button>}
+        {canManage && <button className="btn-primary self-start sm:self-auto" onClick={openAdd}>+ เพิ่มพนักงาน</button>}
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {[
           { key: 'all', label: `ทั้งหมด (${activeCount})` },
           { key: 'daily', label: `รายวัน (${dailyCount})` },
@@ -156,7 +157,7 @@ export default function EmployeesPage() {
           <button
             key={tab.key}
             onClick={() => setFilter(tab.key as typeof filter)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
               filter === tab.key
                 ? 'bg-blue-600 text-white'
                 : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
@@ -167,114 +168,169 @@ export default function EmployeesPage() {
         ))}
       </div>
 
-      <div className="card">
+      <div className="card !p-0 overflow-hidden">
         {filtered.length === 0 ? (
-          <p className="text-center text-gray-400 py-8">ไม่มีข้อมูลพนักงาน</p>
+          <p className="text-center text-gray-400 py-8 text-sm">ไม่มีข้อมูลพนักงาน</p>
         ) : (
-          <table className="w-full">
-            <thead>
-              <tr>
-                {([
-                  { key: 'employeeId', label: 'รหัส', cls: '' },
-                  { key: 'name', label: 'ชื่อ', cls: '' },
-                  { key: null, label: 'ชื่อเล่น', cls: '' },
-                  { key: 'department', label: 'แผนก', cls: '' },
-                  { key: 'employmentType', label: 'ประเภท', cls: 'text-center' },
-                  { key: 'rate', label: 'ค่าแรง', cls: 'text-center' },
-                  { key: 'startDate', label: 'วันเริ่มงาน', cls: 'text-center' },
-                  { key: 'isActive', label: 'สถานะ', cls: 'text-center' },
-                  { key: null, label: 'จัดการ', cls: 'text-center' },
-                ] as { key: SortKey | null; label: string; cls: string }[]).map((col, i) => (
-                  <th key={i} className={`table-header ${col.cls}`}>
-                    {col.key ? (
-                      <button
-                        onClick={() => handleSort(col.key as SortKey)}
-                        className="inline-flex items-center gap-0.5 hover:text-blue-600 transition-colors font-semibold"
-                      >
-                        {col.label}
-                        <SortIcon active={sortKey === col.key} dir={sortDir} />
-                      </button>
-                    ) : col.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
+          <>
+            {/* Mobile cards */}
+            <div className="sm:hidden divide-y divide-gray-100">
               {filtered.map((emp) => (
-                <tr key={emp.employeeId} className="hover:bg-gray-50">
-                  <td className="table-cell text-gray-400 font-mono text-xs">{emp.employeeId}</td>
-                  <td className="table-cell font-medium">{emp.name}</td>
-                  <td className="table-cell text-gray-500">{emp.nickname || '-'}</td>
-                  <td className="table-cell text-gray-600">{emp.department || '-'}</td>
-                  <td className="table-cell text-center">
-                    {emp.employmentType === 'daily' ? (
-                      <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full font-medium">รายวัน</span>
-                    ) : (
-                      <span className="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-full font-medium">รายเดือน</span>
-                    )}
-                  </td>
-                  <td className="table-cell text-center text-gray-700">
-                    {emp.employmentType === 'daily' && emp.dailyRate
-                      ? formatCurrency(emp.dailyRate) + '/วัน'
-                      : emp.employmentType === 'monthly' && emp.monthlySalary
-                      ? formatCurrency(emp.monthlySalary) + '/เดือน'
-                      : <span className="text-gray-300">-</span>}
-                  </td>
-                  <td className="table-cell text-center text-gray-500 text-xs">{emp.startDate || '-'}</td>
-                  <td className="table-cell text-center">
-                    {emp.isActive ? (
-                      <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">Active</span>
-                    ) : (
-                      <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Inactive</span>
-                    )}
-                  </td>
-                  <td className="table-cell text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      {canManage && (
-                        <button
-                          onClick={() => openEdit(emp)}
-                          title="แก้ไข"
-                          className="p-1.5 rounded-lg text-blue-500 hover:text-blue-700 hover:bg-blue-50 transition-colors"
-                        >
+                <div key={emp.employeeId} className="p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-medium text-gray-800 text-sm">{emp.name}</p>
+                        {emp.nickname && <span className="text-xs text-gray-400">({emp.nickname})</span>}
+                        {emp.employmentType === 'daily'
+                          ? <span className="text-xs bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full">รายวัน</span>
+                          : <span className="text-xs bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded-full">รายเดือน</span>}
+                        {emp.isActive
+                          ? <span className="text-xs bg-green-50 text-green-700 px-1.5 py-0.5 rounded-full">Active</span>
+                          : <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">Inactive</span>}
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+                        <span className="text-xs text-gray-400 font-mono">{emp.employeeId}</span>
+                        {emp.department && <span className="text-xs text-gray-500">{emp.department}</span>}
+                        <span className="text-xs text-gray-500">
+                          {emp.employmentType === 'daily' && emp.dailyRate
+                            ? formatCurrency(emp.dailyRate) + '/วัน'
+                            : emp.employmentType === 'monthly' && emp.monthlySalary
+                            ? formatCurrency(emp.monthlySalary) + '/เดือน'
+                            : null}
+                        </span>
+                      </div>
+                    </div>
+                    {canManage && (
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button onClick={() => openEdit(emp)} title="แก้ไข"
+                          className="p-2 rounded-lg text-blue-500 hover:text-blue-700 hover:bg-blue-50 transition-colors">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                           </svg>
                         </button>
-                      )}
-                      {canManage && emp.isActive && (
-                        <button
-                          onClick={() => setConfirmDeactivate(emp.employeeId)}
-                          title="ปิดใช้งาน"
-                          className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                          </svg>
-                        </button>
-                      )}
-                      {!canManage && (
-                        <span className="text-gray-300 text-xs">—</span>
-                      )}
-                    </div>
-                  </td>
-                </tr>
+                        {emp.isActive && (
+                          <button onClick={() => setConfirmDeactivate(emp.employeeId)} title="ปิดใช้งาน"
+                            className="p-2 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+            {/* Desktop table */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr>
+                    {([
+                      { key: 'employeeId', label: 'รหัส', cls: '' },
+                      { key: 'name', label: 'ชื่อ', cls: '' },
+                      { key: null, label: 'ชื่อเล่น', cls: '' },
+                      { key: 'department', label: 'แผนก', cls: '' },
+                      { key: 'employmentType', label: 'ประเภท', cls: 'text-center' },
+                      { key: 'rate', label: 'ค่าแรง', cls: 'text-center' },
+                      { key: 'startDate', label: 'วันเริ่มงาน', cls: 'text-center' },
+                      { key: 'isActive', label: 'สถานะ', cls: 'text-center' },
+                      { key: null, label: 'จัดการ', cls: 'text-center' },
+                    ] as { key: SortKey | null; label: string; cls: string }[]).map((col, i) => (
+                      <th key={i} className={`table-header ${col.cls}`}>
+                        {col.key ? (
+                          <button
+                            onClick={() => handleSort(col.key as SortKey)}
+                            className="inline-flex items-center gap-0.5 hover:text-blue-600 transition-colors font-semibold"
+                          >
+                            {col.label}
+                            <SortIcon active={sortKey === col.key} dir={sortDir} />
+                          </button>
+                        ) : col.label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((emp) => (
+                    <tr key={emp.employeeId} className="hover:bg-gray-50">
+                      <td className="table-cell text-gray-400 font-mono text-xs">{emp.employeeId}</td>
+                      <td className="table-cell font-medium">{emp.name}</td>
+                      <td className="table-cell text-gray-500">{emp.nickname || '-'}</td>
+                      <td className="table-cell text-gray-600">{emp.department || '-'}</td>
+                      <td className="table-cell text-center">
+                        {emp.employmentType === 'daily' ? (
+                          <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full font-medium">รายวัน</span>
+                        ) : (
+                          <span className="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-full font-medium">รายเดือน</span>
+                        )}
+                      </td>
+                      <td className="table-cell text-center text-gray-700">
+                        {emp.employmentType === 'daily' && emp.dailyRate
+                          ? formatCurrency(emp.dailyRate) + '/วัน'
+                          : emp.employmentType === 'monthly' && emp.monthlySalary
+                          ? formatCurrency(emp.monthlySalary) + '/เดือน'
+                          : <span className="text-gray-300">-</span>}
+                      </td>
+                      <td className="table-cell text-center text-gray-500 text-xs">{emp.startDate || '-'}</td>
+                      <td className="table-cell text-center">
+                        {emp.isActive ? (
+                          <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">Active</span>
+                        ) : (
+                          <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Inactive</span>
+                        )}
+                      </td>
+                      <td className="table-cell text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          {canManage && (
+                            <button
+                              onClick={() => openEdit(emp)}
+                              title="แก้ไข"
+                              className="p-1.5 rounded-lg text-blue-500 hover:text-blue-700 hover:bg-blue-50 transition-colors"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                          )}
+                          {canManage && emp.isActive && (
+                            <button
+                              onClick={() => setConfirmDeactivate(emp.employeeId)}
+                              title="ปิดใช้งาน"
+                              className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                              </svg>
+                            </button>
+                          )}
+                          {!canManage && (
+                            <span className="text-gray-300 text-xs">—</span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
       {/* Add/Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg">
-            <div className="p-6 border-b border-gray-100">
+        <div className="modal-backdrop">
+          <div className="modal-panel">
+            <div className="p-4 sm:p-6 border-b border-gray-100">
               <h3 className="text-lg font-bold text-gray-900">
                 {editId ? 'แก้ไขข้อมูลพนักงาน' : 'เพิ่มพนักงานใหม่'}
               </h3>
             </div>
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 sm:p-6 space-y-4">
+              <div className="form-grid-2">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">รหัสพนักงาน *</label>
                   <input
@@ -374,7 +430,7 @@ export default function EmployeesPage() {
               </div>
               {formError && <p className="text-red-600 text-sm">⚠️ {formError}</p>}
             </div>
-            <div className="p-6 border-t border-gray-100 flex justify-end gap-3">
+            <div className="p-4 sm:p-6 border-t border-gray-100 flex justify-end gap-3">
               <button className="btn-secondary" onClick={() => setShowModal(false)}>ยกเลิก</button>
               <button
                 className="btn-primary"
@@ -390,8 +446,8 @@ export default function EmployeesPage() {
 
       {/* Confirm Deactivate */}
       {confirmDeactivate && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full mx-4">
+        <div className="modal-backdrop">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl p-6 w-full sm:max-w-sm">
             <h3 className="text-lg font-bold text-gray-900 mb-2">ยืนยันการปิดใช้งาน</h3>
             <p className="text-gray-600 text-sm mb-6">
               พนักงานจะถูกปิดใช้งาน แต่ประวัติการเข้างานจะยังคงอยู่

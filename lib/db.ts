@@ -21,7 +21,11 @@ export function getDb(): Database.Database {
       `ALTER TABLE payroll_settings ADD COLUMN tier2_amount REAL DEFAULT 800`,
       `ALTER TABLE payroll_settings ADD COLUMN tier3_threshold INTEGER DEFAULT 5`,
       `ALTER TABLE payroll_settings ADD COLUMN tier3_amount REAL DEFAULT 500`,
-      `ALTER TABLE payroll_settings ADD COLUMN monthly_max_absent INTEGER DEFAULT 5`,
+      `ALTER TABLE payroll_settings ADD COLUMN monthly_max_absent REAL DEFAULT 3.5`,
+      // Step-based diligence bonus (new system)
+      `ALTER TABLE payroll_settings ADD COLUMN diligence_base_amount REAL DEFAULT 1000`,
+      `ALTER TABLE payroll_settings ADD COLUMN diligence_step_amount REAL DEFAULT 150`,
+      `ALTER TABLE payroll_settings ADD COLUMN diligence_max_days REAL DEFAULT 3`,
       // Soft delete for leaves
       `ALTER TABLE leaves ADD COLUMN deleted_at TEXT`,
       `ALTER TABLE leaves ADD COLUMN deleted_by TEXT`,
@@ -33,6 +37,9 @@ export function getDb(): Database.Database {
     for (const sql of migrations) {
       try { db.exec(sql) } catch {}
     }
+
+    // อัปเดตค่า monthly_max_absent เป็น 3.5 (กฎใหม่) ถ้ายังเป็นค่าเก่า (5)
+    db.prepare(`UPDATE payroll_settings SET monthly_max_absent = 3.5 WHERE id = 1 AND monthly_max_absent = 5`).run()
 
     // Migration: add 'full_day' leave type (replace sick-without-cert)
     // Check if the leaves table already supports 'full_day'

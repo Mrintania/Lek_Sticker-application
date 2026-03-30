@@ -37,9 +37,9 @@ interface PayrollSettings {
   diligenceBonusEnabled: boolean
   sickWithCertExempt: boolean
   monthlyMaxAbsent: number
-  tier1Threshold: number; tier1Amount: number
-  tier2Threshold: number; tier2Amount: number
-  tier3Threshold: number; tier3Amount: number
+  diligenceBaseAmount: number
+  diligenceStepAmount: number
+  diligenceMaxDays: number
 }
 
 type SortKey = 'name' | 'employmentType' | 'workingDays' | 'daysPresent' | 'daysAbsent' | 'daysSickCert' | 'daysSickNoCert' | 'daysHalfDay' | 'basePay' | 'diligenceBonus' | 'totalPay'
@@ -52,10 +52,10 @@ export default function PayrollPage() {
   const [paySettings, setPaySettings] = useState<PayrollSettings>({
     diligenceBonusEnabled: true,
     sickWithCertExempt: true,
-    monthlyMaxAbsent: 5,
-    tier1Threshold: 1, tier1Amount: 1000,
-    tier2Threshold: 3, tier2Amount: 800,
-    tier3Threshold: 5, tier3Amount: 500,
+    monthlyMaxAbsent: 3.5,
+    diligenceBaseAmount: 1000,
+    diligenceStepAmount: 150,
+    diligenceMaxDays: 3,
   })
   const [loading, setLoading] = useState(false)
   const [noDataWarning, setNoDataWarning] = useState('')
@@ -238,53 +238,51 @@ export default function PayrollPage() {
   }))
 
   return (
-    <div className="p-8 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="page-container">
+      <div className="page-header">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">เงินเดือน</h2>
-          <div className="flex items-center gap-3 mt-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-gray-500">{formatThaiMonthYear(year, month)}</p>
-              {isCurrentMonth && (
-                <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium">
-                  ⏳ ข้อมูลยังไม่ครบเดือน (ถึง {today.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })})
-                </span>
-              )}
-              {refreshedAt && (
-                <span className="text-xs text-gray-400">
-                  อัปเดตล่าสุด {refreshedAt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} น.
-                </span>
-              )}
-            </div>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">เงินเดือน</h2>
+          <div className="flex flex-wrap items-center gap-2 mt-1">
+            <p className="text-gray-500 text-sm">{formatThaiMonthYear(year, month)}</p>
+            {isCurrentMonth && (
+              <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium">
+                ⏳ ยังไม่ครบเดือน (ถึง {today.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })})
+              </span>
+            )}
+            {refreshedAt && (
+              <span className="text-xs text-gray-400">
+                อัปเดต {refreshedAt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
           </div>
         </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          <select value={month} onChange={(e) => setMonth(Number(e.target.value))}>
+        <div className="flex flex-wrap items-center gap-2">
+          <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="!w-auto">
             {months.map((m) => <option key={m} value={m}>{formatThaiMonthYear(year, m).split(' ')[0]}</option>)}
           </select>
-          <select value={year} onChange={(e) => setYear(Number(e.target.value))}>
+          <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="!w-auto">
             {years.map((y) => <option key={y} value={y}>{y + 543}</option>)}
           </select>
           {canManage && (
             <>
-              <button className="btn-secondary" onClick={() => setShowSettings(!showSettings)}>⚙️ ตั้งค่าเบี้ยขยัน</button>
-              <button className="btn-primary" onClick={handleCalculate} disabled={loading}>
-                {loading ? '⏳ กำลังคำนวณ...' : '🔄 คำนวณเงินเดือน'}
+              <button className="btn-secondary whitespace-nowrap" onClick={() => setShowSettings(!showSettings)}>⚙️ เบี้ยขยัน</button>
+              <button className="btn-primary whitespace-nowrap" onClick={handleCalculate} disabled={loading}>
+                {loading ? '⏳ คำนวณ...' : '🔄 คำนวณเงินเดือน'}
               </button>
             </>
           )}
           {records.length > 0 && (
-            <button className="btn-secondary" onClick={() => exportMonthlyReport(summaryForExport, year, month)}>⬇️ Export</button>
+            <button className="btn-secondary whitespace-nowrap" onClick={() => exportMonthlyReport(summaryForExport, year, month)}>⬇️ Export</button>
           )}
         </div>
       </div>
 
       {/* Payroll Settings Modal */}
       {showSettings && canManage && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[90vh]">
+        <div className="modal-backdrop">
+          <div className="modal-panel sm:max-w-lg flex flex-col">
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-100 shrink-0">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-100 shrink-0">
               <div>
                 <h3 className="text-lg font-bold text-gray-900">⚙️ ตั้งค่าเบี้ยขยัน</h3>
                 <p className="text-sm text-gray-400 mt-0.5">กำหนดเกณฑ์การจ่ายเบี้ยขยันพนักงาน</p>
@@ -300,7 +298,7 @@ export default function PayrollPage() {
             </div>
 
             {/* Body */}
-            <div className="p-6 space-y-5 overflow-y-auto">
+            <div className="p-4 sm:p-6 space-y-5 overflow-y-auto">
               {/* Checkboxes */}
               <div className="space-y-3">
                 <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors">
@@ -329,70 +327,98 @@ export default function PayrollPage() {
                 </label>
               </div>
 
+              {/* Step-based bonus config */}
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-gray-700">เกณฑ์เบี้ยขยัน <span className="font-normal text-gray-400">(รายเดือนเท่านั้น)</span></p>
+
+                {/* 3 config fields */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="p-3 rounded-xl border border-gray-100 bg-gray-50 text-center">
+                    <p className="text-xs text-gray-500 mb-1.5">บาทเมื่อไม่หยุด</p>
+                    <input
+                      type="number" min={0} step={50}
+                      className="w-full text-center font-semibold text-sm"
+                      value={paySettings.diligenceBaseAmount}
+                      onChange={(e) => setPaySettings({ ...paySettings, diligenceBaseAmount: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div className="p-3 rounded-xl border border-gray-100 bg-gray-50 text-center">
+                    <p className="text-xs text-gray-500 mb-1.5">ลดต่อ 0.5 วัน</p>
+                    <input
+                      type="number" min={0} step={50}
+                      className="w-full text-center font-semibold text-sm"
+                      value={paySettings.diligenceStepAmount}
+                      onChange={(e) => setPaySettings({ ...paySettings, diligenceStepAmount: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div className="p-3 rounded-xl border border-gray-100 bg-gray-50 text-center">
+                    <p className="text-xs text-gray-500 mb-1.5">หยุดได้สูงสุด (วัน)</p>
+                    <input
+                      type="number" min={0} step={0.5}
+                      className="w-full text-center font-semibold text-sm"
+                      value={paySettings.diligenceMaxDays}
+                      onChange={(e) => setPaySettings({ ...paySettings, diligenceMaxDays: Number(e.target.value) })}
+                    />
+                  </div>
+                </div>
+
+                {/* Preview table — computed from inputs */}
+                <div className="rounded-xl border border-gray-200 overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-blue-50 text-blue-700">
+                        <th className="px-3 py-2 text-left font-medium">หยุด (วัน)</th>
+                        <th className="px-3 py-2 text-right font-medium">เบี้ยขยัน (บาท)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {(() => {
+                        const rows = []
+                        const base = paySettings.diligenceBaseAmount
+                        const step = paySettings.diligenceStepAmount
+                        const max = paySettings.diligenceMaxDays
+                        for (let d = 0; d <= max; d += 0.5) {
+                          const steps = Math.floor(d / 0.5)
+                          const bonus = Math.max(0, base - steps * step)
+                          rows.push(
+                            <tr key={d} className={d === 0 ? 'bg-green-50' : 'hover:bg-gray-50'}>
+                              <td className="px-3 py-2 text-gray-600">{d === 0 ? 'ไม่หยุด' : d % 1 === 0 ? `${d} วัน` : `${d} วัน`}</td>
+                              <td className="px-3 py-2 text-right font-semibold text-green-700">฿{bonus.toLocaleString()}</td>
+                            </tr>
+                          )
+                        }
+                        rows.push(
+                          <tr key="over" className="bg-red-50">
+                            <td className="px-3 py-2 text-red-400 italic">หยุดเกิน {max} วัน</td>
+                            <td className="px-3 py-2 text-right font-semibold text-red-400">฿0</td>
+                          </tr>
+                        )
+                        return rows
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-xs text-gray-400">* พนักงานรายวันไม่ได้รับเบี้ยขยัน</p>
+              </div>
+
               {/* Monthly max absent */}
-              <div className="p-3 rounded-xl border border-gray-100 bg-gray-50">
+              <div className="p-3 rounded-xl border border-orange-100 bg-orange-50">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-medium text-gray-800">วันขาดสูงสุดก่อนคิดรายวัน</p>
-                    <p className="text-xs text-gray-400 mt-0.5">สำหรับพนักงานรายเดือน — หากขาดเกินจะเปลี่ยนเป็นคิดรายวัน</p>
+                    <p className="text-sm font-medium text-gray-800">หยุด/ลา เกินนี้ → คิดรายวัน</p>
+                    <p className="text-xs text-gray-400 mt-0.5">สำหรับพนักงานรายเดือน — หากหยุดเกินจะเปลี่ยนเป็นคิดรายวันทันที</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <input
                       type="number"
                       className="w-16 text-center"
-                      min={0}
+                      min={0} step={0.5}
                       value={paySettings.monthlyMaxAbsent}
                       onChange={(e) => setPaySettings({ ...paySettings, monthlyMaxAbsent: Number(e.target.value) })}
                     />
                     <span className="text-sm text-gray-500">วัน</span>
                   </div>
                 </div>
-              </div>
-
-              {/* Tiered bonus */}
-              <div>
-                <p className="text-sm font-semibold text-gray-700 mb-2">เบี้ยขยันแบบขั้นบันได <span className="font-normal text-gray-400">(รายเดือนเท่านั้น)</span></p>
-                <div className="rounded-xl border border-gray-200 overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-blue-50 text-blue-700">
-                        <th className="px-4 py-2.5 text-left font-medium">ระดับ</th>
-                        <th className="px-4 py-2.5 text-left font-medium">ขาด ≤ (วัน)</th>
-                        <th className="px-4 py-2.5 text-left font-medium">เบี้ยขยัน (บาท)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {([
-                        { label: '1', thKey: 'tier1Threshold' as const, amKey: 'tier1Amount' as const },
-                        { label: '2', thKey: 'tier2Threshold' as const, amKey: 'tier2Amount' as const },
-                        { label: '3', thKey: 'tier3Threshold' as const, amKey: 'tier3Amount' as const },
-                      ]).map((tier) => (
-                        <tr key={tier.label} className="hover:bg-gray-50">
-                          <td className="px-4 py-2.5 text-gray-500 font-medium">ระดับ {tier.label}</td>
-                          <td className="px-4 py-2.5">
-                            <input
-                              type="number" min={0} className="w-16 text-center"
-                              value={paySettings[tier.thKey]}
-                              onChange={(e) => setPaySettings({ ...paySettings, [tier.thKey]: Number(e.target.value) })}
-                            />
-                          </td>
-                          <td className="px-4 py-2.5">
-                            <input
-                              type="number" min={0} className="w-24"
-                              value={paySettings[tier.amKey]}
-                              onChange={(e) => setPaySettings({ ...paySettings, [tier.amKey]: Number(e.target.value) })}
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                      <tr className="bg-gray-50">
-                        <td className="px-4 py-2.5 text-gray-400 italic" colSpan={2}>ขาด &gt; ระดับ 3</td>
-                        <td className="px-4 py-2.5 text-gray-400 font-medium">฿0</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                <p className="text-xs text-gray-400 mt-2">* พนักงานรายวันไม่ได้รับเบี้ยขยัน</p>
               </div>
             </div>
 
@@ -434,18 +460,27 @@ export default function PayrollPage() {
 
       {/* Summary Cards */}
       {records.length > 0 && (
-        <div className="grid grid-cols-3 gap-4">
-          <div className="card text-center"><p className="text-2xl font-bold text-blue-700">{formatCurrency(totals.basePay)}</p><p className="text-sm text-gray-500 mt-1">รวมเงินเดือนพื้นฐาน</p></div>
-          <div className="card text-center"><p className="text-2xl font-bold text-green-700">{formatCurrency(totals.bonus)}</p><p className="text-sm text-gray-500 mt-1">รวมเบี้ยขยัน</p></div>
-          <div className="card text-center"><p className="text-2xl font-bold text-purple-700">{formatCurrency(totals.totalPay)}</p><p className="text-sm text-gray-500 mt-1">รวมทั้งหมด</p></div>
+        <div className="grid grid-cols-3 gap-3 sm:gap-4">
+          <div className="card text-center !py-3 sm:!py-4">
+            <p className="text-lg sm:text-2xl font-bold text-blue-700">{formatCurrency(totals.basePay)}</p>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">เงินเดือน</p>
+          </div>
+          <div className="card text-center !py-3 sm:!py-4">
+            <p className="text-lg sm:text-2xl font-bold text-green-700">{formatCurrency(totals.bonus)}</p>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">เบี้ยขยัน</p>
+          </div>
+          <div className="card text-center !py-3 sm:!py-4">
+            <p className="text-lg sm:text-2xl font-bold text-purple-700">{formatCurrency(totals.totalPay)}</p>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">รวมทั้งหมด</p>
+          </div>
         </div>
       )}
 
       {/* Payroll Table */}
-      <div className="card">
+      <div className="card !p-0 overflow-hidden">
         {records.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-400 mb-4">ยังไม่มีข้อมูลเงินเดือนสำหรับเดือนนี้</p>
+            <p className="text-gray-400 mb-4 text-sm">ยังไม่มีข้อมูลเงินเดือนสำหรับเดือนนี้</p>
             {canManage && <button className="btn-primary" onClick={handleCalculate}>คำนวณเงินเดือน</button>}
           </div>
         ) : (
@@ -543,10 +578,10 @@ export default function PayrollPage() {
       </div>
       {/* Employee Detail Modal */}
       {detailRecord && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh]">
+        <div className="modal-backdrop">
+          <div className="modal-panel sm:max-w-2xl flex flex-col">
             {/* Header */}
-            <div className="flex items-start justify-between p-6 border-b border-gray-100 shrink-0">
+            <div className="flex items-start justify-between p-4 sm:p-6 border-b border-gray-100 shrink-0">
               <div>
                 <div className="flex items-center gap-3">
                   <h3 className="text-xl font-bold text-gray-900">{detailRecord.name}</h3>
@@ -688,9 +723,9 @@ export default function PayrollPage() {
 
       {/* Daily Rate Modal */}
       {dailyRateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
-            <div className="p-6 border-b border-gray-100">
+        <div className="modal-backdrop">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-sm">
+            <div className="p-4 sm:p-6 border-b border-gray-100">
               <h3 className="text-lg font-bold text-gray-900">ตั้งค่าค่าจ้างรายวัน</h3>
               <p className="text-sm text-gray-500 mt-1">{dailyRateModal.name}</p>
             </div>
@@ -713,7 +748,7 @@ export default function PayrollPage() {
                 />
               </div>
             </div>
-            <div className="p-6 border-t border-gray-100 flex justify-end gap-3">
+            <div className="p-4 sm:p-6 border-t border-gray-100 flex justify-end gap-3">
               <button className="btn-secondary" onClick={() => setDailyRateModal(null)}>ยกเลิก</button>
               <button
                 className="btn-primary"

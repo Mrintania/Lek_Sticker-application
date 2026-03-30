@@ -123,10 +123,10 @@ export default function AuditPage() {
   if (!user || user.role !== 'admin') return null
 
   return (
-    <div className="p-6 max-w-7xl space-y-4">
+    <div className="page-container max-w-7xl">
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">บันทึกการใช้งาน</h2>
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900">บันทึกการใช้งาน</h2>
         <p className="text-gray-500 mt-1">ติดตามทุกการกระทำในระบบ — เฉพาะ Admin</p>
       </div>
 

@@ -54,7 +54,7 @@ export default function FileUpload() {
   return (
     <div className="space-y-6">
       <div
-        className={`border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-colors ${
+        className={`border-2 border-dashed rounded-2xl p-6 sm:p-12 text-center cursor-pointer transition-colors ${
           dragging ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
         }`}
         onClick={() => inputRef.current?.click()}
@@ -67,8 +67,8 @@ export default function FileUpload() {
           if (file) handleFile(file)
         }}
       >
-        <div className="text-5xl mb-4">{loading ? '⏳' : '📂'}</div>
-        <p className="text-lg font-semibold text-gray-700">
+        <div className="text-4xl sm:text-5xl mb-3 sm:mb-4">{loading ? '⏳' : '📂'}</div>
+        <p className="text-base sm:text-lg font-semibold text-gray-700">
           {loading ? 'กำลังนำเข้าข้อมูล...' : 'ลากไฟล์มาวางที่นี่ หรือคลิกเพื่อเลือกไฟล์'}
         </p>
         <p className="text-sm text-gray-400 mt-2">รองรับไฟล์ .xlsx ที่ export จากเครื่องสแกนลายนิ้วมือ</p>
@@ -91,7 +91,7 @@ export default function FileUpload() {
       {result && (
         <div className="card border-green-100 bg-green-50">
           <h3 className="font-semibold text-green-800 mb-3">✅ นำเข้าข้อมูลสำเร็จ</h3>
-          <div className="grid grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4">
             <div className="text-center p-3 bg-white rounded-lg">
               <p className="text-2xl font-bold text-green-700">{result.addedRecords}</p>
               <p className="text-xs text-green-600 mt-1">บันทึกใหม่</p>

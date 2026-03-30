@@ -87,35 +87,35 @@ export default function EmployeePage() {
     }
   }), [records, sortKey, sortDir])
 
-  if (!isLoaded) return <div className="p-8 text-center text-gray-400">⏳ กำลังโหลด...</div>
+  if (!isLoaded) return <div className="page-container text-center text-gray-400">⏳ กำลังโหลด...</div>
 
   if (master.length === 0) {
     return (
-      <div className="p-8 text-center">
+      <div className="page-container text-center">
         <p className="text-gray-400 py-8">{isRegularUser ? 'ยังไม่มีข้อมูลของคุณในระบบ' : 'ยังไม่มีข้อมูลการสแกน กรุณาอัปโหลดไฟล์ก่อน'}</p>
       </div>
     )
   }
 
   return (
-    <div className="p-8 space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
+    <div className="page-container">
+      <div className="page-header">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">ข้อมูลพนักงานรายคน</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">ข้อมูลพนักงานรายคน</h2>
         </div>
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex flex-wrap items-center gap-2">
           {!isRegularUser && (
-            <select value={selectedEmpId} onChange={(e) => setSelectedEmpId(e.target.value)}>
+            <select value={selectedEmpId} onChange={(e) => setSelectedEmpId(e.target.value)} className="!w-auto flex-1 sm:flex-none">
               {uniqueEmployees.map(([id, name]) => (
                 <option key={id} value={id}>{name}</option>
               ))}
             </select>
           )}
-          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="!w-auto flex-1 sm:flex-none" />
           <span className="text-gray-400 text-sm">ถึง</span>
-          <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="!w-auto flex-1 sm:flex-none" />
           {records.length > 0 && !isRegularUser && (
-            <button className="btn-secondary" onClick={() => exportEmployeeReport(records, selectedEmpId, master.find(r => r.employeeId === selectedEmpId)?.name ?? '')}>
+            <button className="btn-secondary whitespace-nowrap" onClick={() => exportEmployeeReport(records, selectedEmpId, master.find(r => r.employeeId === selectedEmpId)?.name ?? '')}>
               ⬇️ Export Excel
             </button>
           )}
@@ -123,34 +123,34 @@ export default function EmployeePage() {
       </div>
 
       {kpis && (
-        <div className="grid grid-cols-4 gap-4">
-          <div className="card text-center">
-            <p className={`text-3xl font-bold ${kpis.attendanceRate >= 90 ? 'text-green-600' : kpis.attendanceRate >= 75 ? 'text-yellow-600' : 'text-red-600'}`}>
+        <div className="stats-grid">
+          <div className="stat-card">
+            <p className={`text-2xl sm:text-3xl font-bold ${kpis.attendanceRate >= 90 ? 'text-green-600' : kpis.attendanceRate >= 75 ? 'text-yellow-600' : 'text-red-600'}`}>
               {kpis.attendanceRate.toFixed(1)}%
             </p>
-            <p className="text-sm text-gray-500 mt-1">อัตราการมาทำงาน</p>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">อัตราการมาทำงาน</p>
           </div>
-          <div className="card text-center">
-            <p className={`text-3xl font-bold ${kpis.punctualityRate >= 90 ? 'text-green-600' : kpis.punctualityRate >= 75 ? 'text-yellow-600' : 'text-red-600'}`}>
+          <div className="stat-card">
+            <p className={`text-2xl sm:text-3xl font-bold ${kpis.punctualityRate >= 90 ? 'text-green-600' : kpis.punctualityRate >= 75 ? 'text-yellow-600' : 'text-red-600'}`}>
               {kpis.punctualityRate.toFixed(1)}%
             </p>
-            <p className="text-sm text-gray-500 mt-1">อัตราตรงเวลา</p>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">อัตราตรงเวลา</p>
           </div>
-          <div className="card text-center">
-            <p className="text-3xl font-bold text-blue-600">{formatHours(kpis.avgHours)}</p>
-            <p className="text-sm text-gray-500 mt-1">เฉลี่ยชม.ต่อวัน</p>
+          <div className="stat-card">
+            <p className="text-2xl sm:text-3xl font-bold text-blue-600">{formatHours(kpis.avgHours)}</p>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">เฉลี่ยชม.ต่อวัน</p>
           </div>
-          <div className="card text-center">
-            <p className="text-3xl font-bold text-yellow-600">{formatMinutes(kpis.totalLate)}</p>
-            <p className="text-sm text-gray-500 mt-1">รวมเวลาสาย</p>
+          <div className="stat-card">
+            <p className="text-2xl sm:text-3xl font-bold text-yellow-600">{formatMinutes(kpis.totalLate)}</p>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">รวมเวลาสาย</p>
           </div>
         </div>
       )}
 
       {monthlyTrend.length > 0 && (
         <div className="card">
-          <h3 className="font-semibold text-gray-800 mb-4">แนวโน้มการมาทำงาน (อัตรา%)</h3>
-          <ResponsiveContainer width="100%" height={200}>
+          <h3 className="font-semibold text-gray-800 mb-3 text-sm sm:text-base">แนวโน้มการมาทำงาน (อัตรา%)</h3>
+          <ResponsiveContainer width="100%" height={180}>
             <LineChart data={monthlyTrend} margin={{ top: 0, right: 10, bottom: 20, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="label" tick={{ fontSize: 11 }} angle={-30} textAnchor="end" interval={0} />
@@ -162,10 +162,12 @@ export default function EmployeePage() {
         </div>
       )}
 
-      <div className="card">
-        <h3 className="font-semibold text-gray-800 mb-4">ประวัติการเข้างาน ({records.length} วัน)</h3>
+      <div className="card !p-0 overflow-hidden">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100">
+          <h3 className="font-semibold text-gray-800 text-sm sm:text-base">ประวัติการเข้างาน ({records.length} วัน)</h3>
+        </div>
         {records.length === 0 ? (
-          <p className="text-center text-gray-400 py-8">ไม่มีข้อมูลสำหรับพนักงานคนนี้</p>
+          <p className="text-center text-gray-400 py-8 text-sm">ไม่มีข้อมูลสำหรับพนักงานคนนี้</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">

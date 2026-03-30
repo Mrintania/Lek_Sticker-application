@@ -33,9 +33,9 @@ export async function POST(req: NextRequest) {
     diligence_bonus_enabled: number
     sick_with_cert_exempt: number
     monthly_max_absent: number
-    tier1_threshold: number; tier1_amount: number
-    tier2_threshold: number; tier2_amount: number
-    tier3_threshold: number; tier3_amount: number
+    diligence_base_amount: number
+    diligence_step_amount: number
+    diligence_max_days: number
   }
 
   // Clean up orphan attendance_overrides where the linked leave no longer exists
@@ -191,27 +191,29 @@ export async function POST(req: NextRequest) {
       // รายวัน: คิดตามวันที่ทำงานจริง (ครึ่งวัน = 0.5)
       basePay = emp.daily_rate ? Math.max(0, effectiveDays) * emp.daily_rate : 0
     } else if (emp.employment_type === 'monthly') {
-      if (realAbsent > (ps.monthly_max_absent ?? 5)) {
-        // ขาดเกิน 5 วัน → คิดเป็นรายวันทันที
+      if (realAbsent > (ps.monthly_max_absent ?? 3.5)) {
+        // ขาดเกิน 3.5 วัน → คิดเป็นรายวันทันที
         // อัตรารายวัน = เงินเดือน ÷ วันทำงานทั้งหมดในเดือน
         const dailyRateFromSalary = (emp.monthly_salary ?? 0) / totalWorkingDaysInMonth
         basePay = Math.max(0, effectiveDays) * dailyRateFromSalary
       } else {
-        // ขาดไม่เกิน 5 วัน → ได้เงินเดือนเต็ม
+        // ขาดไม่เกิน 3.5 วัน → ได้เงินเดือนเต็ม
         basePay = emp.monthly_salary ?? 0
       }
     }
 
-    // Diligence bonus — monthly only
+    // Diligence bonus — monthly only (ระบบขั้นบันได ลดทีละ stepAmount ต่อ 0.5 วัน)
+    // ไม่หยุด = baseAmount, หยุด 0.5 วัน = baseAmount - step, หยุด 1 วัน = baseAmount - 2*step ...
+    // หยุดเกิน maxDays → ไม่ได้เบี้ยขยัน
     let diligenceBonus = 0
     if (ps.diligence_bonus_enabled && emp.employment_type === 'monthly') {
-      const t1 = ps.tier1_threshold ?? 1
-      const t2 = ps.tier2_threshold ?? 3
-      const t3 = ps.tier3_threshold ?? 5
-      if (realAbsent <= t1) diligenceBonus = ps.tier1_amount ?? 1000
-      else if (realAbsent <= t2) diligenceBonus = ps.tier2_amount ?? 800
-      else if (realAbsent <= t3) diligenceBonus = ps.tier3_amount ?? 500
-      else diligenceBonus = 0
+      const baseAmount = ps.diligence_base_amount ?? 1000
+      const stepAmount = ps.diligence_step_amount ?? 150
+      const maxDays = ps.diligence_max_days ?? 3
+      if (realAbsent <= maxDays) {
+        const steps = Math.floor(realAbsent / 0.5)
+        diligenceBonus = Math.max(0, baseAmount - steps * stepAmount)
+      }
     }
 
     const totalPay = Math.max(0, basePay - deductions + diligenceBonus)
@@ -238,7 +240,7 @@ export async function POST(req: NextRequest) {
       deductions: Math.round(deductions * 100) / 100,
       diligenceBonus,
       totalPay: Math.round(totalPay * 100) / 100,
-      switchedToDaily: emp.employment_type === 'monthly' && realAbsent > (ps.monthly_max_absent ?? 5),
+      switchedToDaily: emp.employment_type === 'monthly' && realAbsent > (ps.monthly_max_absent ?? 3.5),
     })
   }
 

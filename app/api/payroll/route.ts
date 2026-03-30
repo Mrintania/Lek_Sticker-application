@@ -15,6 +15,9 @@ export async function GET(req: NextRequest) {
     LEFT JOIN employees e ON pr.employee_id = e.employee_id WHERE 1=1`
   const params: (string | number)[] = []
 
+  // กรองพนักงาน Inactive ออก
+  query += ' AND (e.is_active = 1 OR e.is_active IS NULL)'
+
   if (user.role === 'user' && user.employeeId) {
     query += ' AND pr.employee_id = ?'
     params.push(user.employeeId)

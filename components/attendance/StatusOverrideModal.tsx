@@ -49,15 +49,15 @@ export default function StatusOverrideModal({ employeeId, employeeName, date, cu
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
-        <div className="p-6 border-b border-gray-100">
+    <div className="modal-backdrop">
+      <div className="modal-panel">
+        <div className="p-4 sm:p-6 border-b border-gray-100">
           <h3 className="text-lg font-bold text-gray-900">แก้ไขสถานะการเข้างาน</h3>
           <p className="text-sm text-gray-500 mt-1">
             {employeeName} — {date}
           </p>
         </div>
-        <div className="p-6 space-y-3">
+        <div className="p-4 sm:p-6 space-y-3">
           <label className="block text-sm font-medium text-gray-700 mb-2">เลือกสถานะใหม่</label>
           {STATUS_OPTIONS.map((opt) => (
             <label key={opt.value} className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-gray-50">
@@ -83,7 +83,7 @@ export default function StatusOverrideModal({ employeeId, employeeName, date, cu
           </div>
           {error && <p className="text-red-600 text-sm">⚠️ {error}</p>}
         </div>
-        <div className="p-6 border-t border-gray-100 flex justify-end gap-3">
+        <div className="p-4 sm:p-6 border-t border-gray-100 flex justify-end gap-3">
           <button className="btn-secondary" onClick={onClose}>ยกเลิก</button>
           <button className="btn-primary" onClick={handleSave} disabled={loading}>
             {loading ? 'กำลังบันทึก...' : 'บันทึก'}

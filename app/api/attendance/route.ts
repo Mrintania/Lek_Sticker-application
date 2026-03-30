@@ -44,8 +44,12 @@ export async function GET(req: NextRequest) {
   const params: string[] = [start, end + ' 23:59:59']
 
   if (effectiveEmpId) {
+    // ค้นหาพนักงานคนเดียวเจาะจง — ไม่กรอง is_active (ใช้ดูประวัติย้อนหลังได้)
     query += ' AND employee_id = ?'
     params.push(effectiveEmpId)
+  } else {
+    // แสดงภาพรวมทุกคน — กรองเฉพาะพนักงาน Active
+    query += ' AND employee_id IN (SELECT employee_id FROM employees WHERE is_active = 1)'
   }
 
   const rawRows = db.prepare(query).all(...params) as {
