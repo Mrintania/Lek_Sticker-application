@@ -188,21 +188,21 @@ export default function AdminUsersPage() {
   const adminCount = users.filter(u => u.role === 'admin' && u.is_active).length
   const managerCount = users.filter(u => u.role === 'manager' && u.is_active).length
 
-  if (loading) return <div className="p-8 text-center text-gray-400">⏳ กำลังโหลด...</div>
+  if (loading) return <div className="page-container text-center text-gray-400">⏳ กำลังโหลด...</div>
 
   return (
-    <div className="p-8 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="page-container">
+      <div className="page-header">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">จัดการผู้ใช้งาน</h2>
-          <p className="text-gray-500 mt-1">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">จัดการผู้ใช้งาน</h2>
+          <p className="text-gray-500 mt-1 text-sm">
             ทั้งหมด {activeCount} คน | Admin {adminCount} | Manager {managerCount}
           </p>
         </div>
-        <button className="btn-primary" onClick={openAdd}>+ เพิ่มผู้ใช้</button>
+        <button className="btn-primary self-start sm:self-auto" onClick={openAdd}>+ เพิ่มผู้ใช้</button>
       </div>
 
-      <div className="card">
+      <div className="card !p-0 overflow-hidden">
         {users.length === 0 ? (
           <p className="text-center text-gray-400 py-8">ไม่มีข้อมูลผู้ใช้</p>
         ) : (
@@ -315,12 +315,12 @@ export default function AdminUsersPage() {
 
       {/* Add/Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
-            <div className="p-6 border-b border-gray-100">
+        <div className="modal-backdrop">
+          <div className="modal-panel">
+            <div className="p-4 sm:p-6 border-b border-gray-100">
               <h3 className="text-lg font-bold">{editId ? 'แก้ไขผู้ใช้' : 'เพิ่มผู้ใช้ใหม่'}</h3>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-4 sm:p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Username *</label>
                 <input
@@ -382,7 +382,7 @@ export default function AdminUsersPage() {
               </div>
               {formError && <p className="text-red-600 text-sm">⚠️ {formError}</p>}
             </div>
-            <div className="p-6 border-t border-gray-100 flex justify-end gap-3">
+            <div className="p-4 sm:p-6 border-t border-gray-100 flex justify-end gap-3">
               <button className="btn-secondary" onClick={() => setShowModal(false)}>ยกเลิก</button>
               <button className="btn-primary" onClick={handleSave} disabled={saving}>
                 {saving ? 'กำลังบันทึก...' : editId ? 'บันทึก' : 'สร้างผู้ใช้'}
@@ -394,8 +394,8 @@ export default function AdminUsersPage() {
 
       {/* Delete Confirmation Modal */}
       {deleteTarget && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+        <div className="modal-backdrop">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-sm p-4 sm:p-6 space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 bg-red-100 rounded-full flex items-center justify-center shrink-0">
                 <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -453,8 +453,8 @@ export default function AdminUsersPage() {
 
       {/* Reset Password Modal */}
       {resetPasswordId && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+        <div className="modal-backdrop">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-sm p-4 sm:p-6">
             <h3 className="text-lg font-bold mb-4">เปลี่ยน Password</h3>
             <input
               type="password"

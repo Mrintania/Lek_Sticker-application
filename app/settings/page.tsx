@@ -176,11 +176,11 @@ export default function SettingsPage() {
   const canViewHolidays = user?.role === 'admin' || user?.role === 'manager'
 
   return (
-    <div className="p-8 max-w-2xl space-y-3">
+    <div className="page-container max-w-2xl space-y-3">
       {/* Page header */}
-      <div className="mb-4">
-        <h2 className="text-2xl font-bold text-gray-900">ตั้งค่าระบบ</h2>
-        <p className="text-gray-500 mt-1">กำหนดเวลาทำงานและเกณฑ์ต่างๆ</p>
+      <div className="mb-2">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900">ตั้งค่าระบบ</h2>
+        <p className="text-gray-500 mt-1 text-sm">กำหนดเวลาทำงานและเกณฑ์ต่างๆ</p>
         {!canEdit && <p className="text-yellow-600 text-sm mt-1">⚠️ เฉพาะ Admin เท่านั้นที่สามารถแก้ไขการตั้งค่าได้</p>}
       </div>
 
@@ -496,8 +496,8 @@ export default function SettingsPage() {
 
       {/* Reset Confirmation Modal */}
       {showResetModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+        <div className="modal-backdrop">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-md p-4 sm:p-6 space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center text-2xl">⚠️</div>
               <div>

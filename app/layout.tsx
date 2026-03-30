@@ -13,7 +13,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <div className="flex min-h-screen">
           <Sidebar />
-          <main className="flex-1 overflow-auto min-w-0">
+          {/* pt-14 = mobile top bar height; lg:pt-0 = no top bar on desktop */}
+          <main className="flex-1 overflow-auto min-w-0 pt-14 lg:pt-0">
             {children}
           </main>
         </div>

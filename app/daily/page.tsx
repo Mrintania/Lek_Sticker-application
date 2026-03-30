@@ -31,12 +31,12 @@ export default function DailyPage() {
   const { sortKey, sortDir, handleSort, sorted } = useSortable<DailySortKey>('name')
   const rawRecords = useMemo(() => {
     const all = getDailyRecords(master, selectedDate)
-    // Regular users: only see their own record
     if (isRegularUser && user?.employeeId) {
       return all.filter((r) => r.employeeId === user.employeeId)
     }
     return all
   }, [master, selectedDate, isRegularUser, user?.employeeId])
+
   const records = useMemo(() => sorted(rawRecords, (key, r) => {
     switch (key) {
       case 'name': return r.name
@@ -47,6 +47,7 @@ export default function DailyPage() {
       case 'status': return r.status
     }
   }), [rawRecords, sortKey, sortDir])
+
   const stats = useMemo(() => ({
     present: rawRecords.filter((r) => !['absent'].includes(r.status)).length,
     late: rawRecords.filter((r) => r.isLate).length,
@@ -58,101 +59,153 @@ export default function DailyPage() {
     await loadAttendance()
   }
 
-  if (!isLoaded) return <div className="p-8 text-center text-gray-400">⏳ กำลังโหลด...</div>
+  if (!isLoaded) return <div className="page-container text-center text-gray-400">⏳ กำลังโหลด...</div>
 
   return (
-    <div className="p-8 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="page-container">
+      {/* Header */}
+      <div className="page-header">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">รายงานรายวัน</h2>
-          {selectedDate && <p className="text-gray-500 mt-1">{formatThaiDateShort(selectedDate)}</p>}
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">รายงานรายวัน</h2>
+          {selectedDate && <p className="text-gray-500 mt-1 text-sm">{formatThaiDateShort(selectedDate)}</p>}
         </div>
-        <div className="flex items-center gap-3">
-          <label className="text-sm text-gray-600 font-medium">เลือกวันที่:</label>
-          <select value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="min-w-[180px]">
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="flex-1 sm:flex-none min-w-0 sm:min-w-[180px] !w-auto"
+          >
             {[...dates].reverse().map((d) => (
               <option key={d} value={d}>{d}</option>
             ))}
           </select>
           {rawRecords.length > 0 && !isRegularUser && (
-            <button className="btn-secondary" onClick={() => exportDailyReport(rawRecords, selectedDate)}>⬇️ Export</button>
+            <button className="btn-secondary whitespace-nowrap" onClick={() => exportDailyReport(rawRecords, selectedDate)}>
+              ⬇️ Export
+            </button>
           )}
         </div>
       </div>
 
+      {/* Stats */}
       {!isRegularUser && (
-        <div className="grid grid-cols-4 gap-4">
+        <div className="stats-grid">
           {[
             { label: 'มาทำงาน', value: stats.present, color: 'text-green-600', bg: 'bg-green-50' },
             { label: 'มาสาย', value: stats.late, color: 'text-yellow-600', bg: 'bg-yellow-50' },
             { label: 'ไม่มีบันทึกออก', value: stats.noCheckout, color: 'text-slate-600', bg: 'bg-slate-50' },
             { label: 'ขาดงาน', value: stats.absent, color: 'text-red-600', bg: 'bg-red-50' },
           ].map((s) => (
-            <div key={s.label} className={`card text-center ${s.bg}`}>
-              <p className={`text-3xl font-bold ${s.color}`}>{s.value}</p>
-              <p className="text-sm text-gray-600 mt-1">{s.label}</p>
+            <div key={s.label} className={`stat-card ${s.bg}`}>
+              <p className={`text-2xl sm:text-3xl font-bold ${s.color}`}>{s.value}</p>
+              <p className="text-xs sm:text-sm text-gray-600 mt-1">{s.label}</p>
             </div>
           ))}
         </div>
       )}
 
-      <div className="card">
+      {/* Records */}
+      <div className="card !p-0 overflow-hidden">
         {records.length === 0 ? (
-          <p className="text-center text-gray-400 py-8">ไม่มีข้อมูลในวันนี้</p>
+          <p className="text-center text-gray-400 py-8 text-sm">ไม่มีข้อมูลในวันนี้</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead><tr>
-                <th className="table-header">#</th>
-                {([
-                  { key: 'name', label: 'ชื่อ', cls: '' },
-                  { key: 'checkIn', label: 'เวลาเข้า', cls: 'text-center' },
-                  { key: 'checkOut', label: 'เวลาออก', cls: 'text-center' },
-                  { key: 'workHours', label: 'ชั่วโมง', cls: 'text-center' },
-                  { key: 'lateMinutes', label: 'สาย', cls: 'text-center' },
-                  { key: 'status', label: 'สถานะ', cls: 'text-center' },
-                ] as { key: DailySortKey; label: string; cls: string }[]).map((col) => (
-                  <th key={col.key} className={`table-header ${col.cls}`}>
-                    <button onClick={() => handleSort(col.key)} className="inline-flex items-center gap-0.5 hover:text-blue-600 transition-colors font-semibold">
-                      {col.label}<SortIcon active={sortKey === col.key} dir={sortDir} />
-                    </button>
-                  </th>
-                ))}
-                {user && canManage(user.role) && <th className="table-header text-center">จัดการ</th>}
-              </tr></thead>
-              <tbody>
-                {records.map((r, i) => (
-                  <tr key={r.employeeId} className="hover:bg-gray-50">
-                    <td className="table-cell text-gray-400">{i + 1}</td>
-                    <td className="table-cell font-medium">{r.name}</td>
-                    <td className="table-cell text-center font-mono">
-                      {r.checkIn ? <span className={r.isLate ? 'text-yellow-600 font-semibold' : 'text-green-600'}>{formatTime(r.checkIn)}</span> : '-'}
-                    </td>
-                    <td className="table-cell text-center font-mono">
-                      {r.checkOut ? <span className={r.isEarlyLeave ? 'text-orange-600 font-semibold' : ''}>{formatTime(r.checkOut)}</span> : '-'}
-                    </td>
-                    <td className="table-cell text-center">{formatHours(r.workHours)}</td>
-                    <td className="table-cell text-center">
-                      {r.lateMinutes > 0 ? <span className="text-yellow-600 font-medium">{formatMinutes(r.lateMinutes)}</span> : <span className="text-green-500 text-xs">ตรงเวลา</span>}
-                    </td>
-                    <td className="table-cell text-center">
+          <>
+            {/* Mobile cards */}
+            <div className="sm:hidden divide-y divide-gray-100">
+              {records.map((r, i) => (
+                <div key={r.employeeId} className="p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-400 w-5">{i + 1}</span>
+                        <p className="font-medium text-gray-800 text-sm truncate">{r.name}</p>
+                      </div>
+                      <div className="mt-1.5 ml-7 flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <span className="text-xs text-gray-500">
+                          เข้า: {r.checkIn ? <span className={r.isLate ? 'text-yellow-600 font-semibold' : 'text-green-600'}>{formatTime(r.checkIn)}</span> : '-'}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          ออก: {r.checkOut ? <span className={r.isEarlyLeave ? 'text-orange-600 font-semibold' : ''}>{formatTime(r.checkOut)}</span> : '-'}
+                        </span>
+                        {r.workHours !== null && (
+                          <span className="text-xs text-gray-500">{formatHours(r.workHours)}</span>
+                        )}
+                        {r.lateMinutes > 0 && (
+                          <span className="text-xs text-yellow-600">สาย {formatMinutes(r.lateMinutes)}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
                       <StatusBadge status={r.status as AttendanceStatus} />
-                    </td>
-                    {user && canManage(user.role) && (
-                      <td className="table-cell text-center">
+                      {user && canManage(user.role) && (
                         <button
                           className="text-blue-500 hover:text-blue-700 text-xs font-medium"
                           onClick={() => setOverrideTarget({ employeeId: r.employeeId, name: r.name, status: r.status })}
                         >
                           ✏️ แก้ไข
                         </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full">
+                <thead><tr>
+                  <th className="table-header">#</th>
+                  {([
+                    { key: 'name', label: 'ชื่อ', cls: '' },
+                    { key: 'checkIn', label: 'เวลาเข้า', cls: 'text-center' },
+                    { key: 'checkOut', label: 'เวลาออก', cls: 'text-center' },
+                    { key: 'workHours', label: 'ชั่วโมง', cls: 'text-center' },
+                    { key: 'lateMinutes', label: 'สาย', cls: 'text-center' },
+                    { key: 'status', label: 'สถานะ', cls: 'text-center' },
+                  ] as { key: DailySortKey; label: string; cls: string }[]).map((col) => (
+                    <th key={col.key} className={`table-header ${col.cls}`}>
+                      <button onClick={() => handleSort(col.key)} className="inline-flex items-center gap-0.5 hover:text-blue-600 transition-colors font-semibold">
+                        {col.label}<SortIcon active={sortKey === col.key} dir={sortDir} />
+                      </button>
+                    </th>
+                  ))}
+                  {user && canManage(user.role) && <th className="table-header text-center">จัดการ</th>}
+                </tr></thead>
+                <tbody>
+                  {records.map((r, i) => (
+                    <tr key={r.employeeId} className="hover:bg-gray-50">
+                      <td className="table-cell text-gray-400">{i + 1}</td>
+                      <td className="table-cell font-medium">{r.name}</td>
+                      <td className="table-cell text-center font-mono">
+                        {r.checkIn ? <span className={r.isLate ? 'text-yellow-600 font-semibold' : 'text-green-600'}>{formatTime(r.checkIn)}</span> : '-'}
                       </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      <td className="table-cell text-center font-mono">
+                        {r.checkOut ? <span className={r.isEarlyLeave ? 'text-orange-600 font-semibold' : ''}>{formatTime(r.checkOut)}</span> : '-'}
+                      </td>
+                      <td className="table-cell text-center">{formatHours(r.workHours)}</td>
+                      <td className="table-cell text-center">
+                        {r.lateMinutes > 0 ? <span className="text-yellow-600 font-medium">{formatMinutes(r.lateMinutes)}</span> : <span className="text-green-500 text-xs">ตรงเวลา</span>}
+                      </td>
+                      <td className="table-cell text-center">
+                        <StatusBadge status={r.status as AttendanceStatus} />
+                      </td>
+                      {user && canManage(user.role) && (
+                        <td className="table-cell text-center">
+                          <button
+                            className="text-blue-500 hover:text-blue-700 text-xs font-medium"
+                            onClick={() => setOverrideTarget({ employeeId: r.employeeId, name: r.name, status: r.status })}
+                          >
+                            ✏️ แก้ไข
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 

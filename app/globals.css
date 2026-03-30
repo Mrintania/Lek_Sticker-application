@@ -12,37 +12,106 @@ body {
   @apply bg-gray-50 text-gray-900;
 }
 
-.status-present { @apply bg-green-100 text-green-800; }
-.status-late { @apply bg-yellow-100 text-yellow-800; }
+/* ── Status classes ─────────────────────────────────────── */
+.status-present    { @apply bg-green-100 text-green-800; }
+.status-late       { @apply bg-yellow-100 text-yellow-800; }
 .status-earlyLeave { @apply bg-orange-100 text-orange-800; }
-.status-halfDay { @apply bg-purple-100 text-purple-800; }
+.status-halfDay    { @apply bg-purple-100 text-purple-800; }
 .status-noCheckout { @apply bg-slate-100 text-slate-700; }
-.status-absent { @apply bg-red-100 text-red-800; }
+.status-absent     { @apply bg-red-100 text-red-800; }
 
+/* ── Card — responsive padding ──────────────────────────── */
 .card {
-  @apply bg-white rounded-xl shadow-sm border border-gray-100 p-6;
+  @apply bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6;
 }
 
+/* ── Buttons ─────────────────────────────────────────────── */
 .btn-primary {
-  @apply bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm;
+  @apply bg-blue-600 text-white px-3 py-2 sm:px-4 rounded-lg hover:bg-blue-700 active:scale-95 transition-all font-medium text-sm touch-manipulation;
 }
 
 .btn-secondary {
-  @apply bg-white text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm border border-gray-200;
+  @apply bg-white text-gray-700 px-3 py-2 sm:px-4 rounded-lg hover:bg-gray-50 active:scale-95 transition-all font-medium text-sm border border-gray-200 touch-manipulation;
 }
 
 .btn-danger {
-  @apply bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition-colors font-medium text-sm border border-red-200;
+  @apply bg-red-50 text-red-600 px-3 py-2 sm:px-4 rounded-lg hover:bg-red-100 active:scale-95 transition-all font-medium text-sm border border-red-200 touch-manipulation;
 }
 
+/* ── Table ───────────────────────────────────────────────── */
 .table-header {
-  @apply bg-gray-50 text-gray-600 text-sm font-semibold px-4 py-3 text-left;
+  @apply bg-gray-50 text-gray-600 text-xs sm:text-sm font-semibold px-2 sm:px-4 py-2.5 sm:py-3 text-left whitespace-nowrap;
 }
 
 .table-cell {
-  @apply px-4 py-3 text-sm text-gray-700 border-b border-gray-50;
+  @apply px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm text-gray-700 border-b border-gray-50;
 }
 
-input[type="date"], select, input[type="number"], input[type="text"], input[type="time"], input[type="password"] {
-  @apply border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white;
+/* ── Scroll hint on mobile tables ───────────────────────── */
+.table-scroll-container {
+  @apply overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0;
+}
+.table-scroll-container::-webkit-scrollbar {
+  height: 4px;
+}
+.table-scroll-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+.table-scroll-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+/* ── Page container ──────────────────────────────────────── */
+.page-container {
+  @apply p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6;
+}
+
+/* ── Page header ─────────────────────────────────────────── */
+.page-header {
+  @apply flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between;
+}
+
+/* ── Stats grid ──────────────────────────────────────────── */
+.stats-grid {
+  @apply grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4;
+}
+
+/* ── Stat card ───────────────────────────────────────────── */
+.stat-card {
+  @apply card text-center py-3 sm:py-4;
+}
+
+/* ── Modal ───────────────────────────────────────────────── */
+.modal-backdrop {
+  @apply fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4;
+}
+
+.modal-panel {
+  @apply bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl shadow-xl max-h-[90vh] overflow-y-auto;
+}
+
+/* ── Form grid ───────────────────────────────────────────── */
+.form-grid-2 {
+  @apply grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4;
+}
+
+/* ── Controls bar ────────────────────────────────────────── */
+.controls-bar {
+  @apply flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between;
+}
+
+/* ── Input base ──────────────────────────────────────────── */
+input[type="date"],
+select,
+input[type="number"],
+input[type="text"],
+input[type="time"],
+input[type="password"] {
+  @apply border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white w-full sm:w-auto;
+}
+
+/* Touch targets — minimum 44px for interactive elements */
+button, a[role="button"] {
+  @apply touch-manipulation;
 }

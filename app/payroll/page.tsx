@@ -238,53 +238,51 @@ export default function PayrollPage() {
   }))
 
   return (
-    <div className="p-8 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="page-container">
+      <div className="page-header">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">เงินเดือน</h2>
-          <div className="flex items-center gap-3 mt-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-gray-500">{formatThaiMonthYear(year, month)}</p>
-              {isCurrentMonth && (
-                <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium">
-                  ⏳ ข้อมูลยังไม่ครบเดือน (ถึง {today.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })})
-                </span>
-              )}
-              {refreshedAt && (
-                <span className="text-xs text-gray-400">
-                  อัปเดตล่าสุด {refreshedAt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} น.
-                </span>
-              )}
-            </div>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">เงินเดือน</h2>
+          <div className="flex flex-wrap items-center gap-2 mt-1">
+            <p className="text-gray-500 text-sm">{formatThaiMonthYear(year, month)}</p>
+            {isCurrentMonth && (
+              <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium">
+                ⏳ ยังไม่ครบเดือน (ถึง {today.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })})
+              </span>
+            )}
+            {refreshedAt && (
+              <span className="text-xs text-gray-400">
+                อัปเดต {refreshedAt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
           </div>
         </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          <select value={month} onChange={(e) => setMonth(Number(e.target.value))}>
+        <div className="flex flex-wrap items-center gap-2">
+          <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="!w-auto">
             {months.map((m) => <option key={m} value={m}>{formatThaiMonthYear(year, m).split(' ')[0]}</option>)}
           </select>
-          <select value={year} onChange={(e) => setYear(Number(e.target.value))}>
+          <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="!w-auto">
             {years.map((y) => <option key={y} value={y}>{y + 543}</option>)}
           </select>
           {canManage && (
             <>
-              <button className="btn-secondary" onClick={() => setShowSettings(!showSettings)}>⚙️ ตั้งค่าเบี้ยขยัน</button>
-              <button className="btn-primary" onClick={handleCalculate} disabled={loading}>
-                {loading ? '⏳ กำลังคำนวณ...' : '🔄 คำนวณเงินเดือน'}
+              <button className="btn-secondary whitespace-nowrap" onClick={() => setShowSettings(!showSettings)}>⚙️ เบี้ยขยัน</button>
+              <button className="btn-primary whitespace-nowrap" onClick={handleCalculate} disabled={loading}>
+                {loading ? '⏳ คำนวณ...' : '🔄 คำนวณเงินเดือน'}
               </button>
             </>
           )}
           {records.length > 0 && (
-            <button className="btn-secondary" onClick={() => exportMonthlyReport(summaryForExport, year, month)}>⬇️ Export</button>
+            <button className="btn-secondary whitespace-nowrap" onClick={() => exportMonthlyReport(summaryForExport, year, month)}>⬇️ Export</button>
           )}
         </div>
       </div>
 
       {/* Payroll Settings Modal */}
       {showSettings && canManage && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[90vh]">
+        <div className="modal-backdrop">
+          <div className="modal-panel sm:max-w-lg flex flex-col">
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-100 shrink-0">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-100 shrink-0">
               <div>
                 <h3 className="text-lg font-bold text-gray-900">⚙️ ตั้งค่าเบี้ยขยัน</h3>
                 <p className="text-sm text-gray-400 mt-0.5">กำหนดเกณฑ์การจ่ายเบี้ยขยันพนักงาน</p>
@@ -300,7 +298,7 @@ export default function PayrollPage() {
             </div>
 
             {/* Body */}
-            <div className="p-6 space-y-5 overflow-y-auto">
+            <div className="p-4 sm:p-6 space-y-5 overflow-y-auto">
               {/* Checkboxes */}
               <div className="space-y-3">
                 <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors">
@@ -434,18 +432,27 @@ export default function PayrollPage() {
 
       {/* Summary Cards */}
       {records.length > 0 && (
-        <div className="grid grid-cols-3 gap-4">
-          <div className="card text-center"><p className="text-2xl font-bold text-blue-700">{formatCurrency(totals.basePay)}</p><p className="text-sm text-gray-500 mt-1">รวมเงินเดือนพื้นฐาน</p></div>
-          <div className="card text-center"><p className="text-2xl font-bold text-green-700">{formatCurrency(totals.bonus)}</p><p className="text-sm text-gray-500 mt-1">รวมเบี้ยขยัน</p></div>
-          <div className="card text-center"><p className="text-2xl font-bold text-purple-700">{formatCurrency(totals.totalPay)}</p><p className="text-sm text-gray-500 mt-1">รวมทั้งหมด</p></div>
+        <div className="grid grid-cols-3 gap-3 sm:gap-4">
+          <div className="card text-center !py-3 sm:!py-4">
+            <p className="text-lg sm:text-2xl font-bold text-blue-700">{formatCurrency(totals.basePay)}</p>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">เงินเดือน</p>
+          </div>
+          <div className="card text-center !py-3 sm:!py-4">
+            <p className="text-lg sm:text-2xl font-bold text-green-700">{formatCurrency(totals.bonus)}</p>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">เบี้ยขยัน</p>
+          </div>
+          <div className="card text-center !py-3 sm:!py-4">
+            <p className="text-lg sm:text-2xl font-bold text-purple-700">{formatCurrency(totals.totalPay)}</p>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">รวมทั้งหมด</p>
+          </div>
         </div>
       )}
 
       {/* Payroll Table */}
-      <div className="card">
+      <div className="card !p-0 overflow-hidden">
         {records.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-400 mb-4">ยังไม่มีข้อมูลเงินเดือนสำหรับเดือนนี้</p>
+            <p className="text-gray-400 mb-4 text-sm">ยังไม่มีข้อมูลเงินเดือนสำหรับเดือนนี้</p>
             {canManage && <button className="btn-primary" onClick={handleCalculate}>คำนวณเงินเดือน</button>}
           </div>
         ) : (
@@ -543,10 +550,10 @@ export default function PayrollPage() {
       </div>
       {/* Employee Detail Modal */}
       {detailRecord && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh]">
+        <div className="modal-backdrop">
+          <div className="modal-panel sm:max-w-2xl flex flex-col">
             {/* Header */}
-            <div className="flex items-start justify-between p-6 border-b border-gray-100 shrink-0">
+            <div className="flex items-start justify-between p-4 sm:p-6 border-b border-gray-100 shrink-0">
               <div>
                 <div className="flex items-center gap-3">
                   <h3 className="text-xl font-bold text-gray-900">{detailRecord.name}</h3>
@@ -688,9 +695,9 @@ export default function PayrollPage() {
 
       {/* Daily Rate Modal */}
       {dailyRateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
-            <div className="p-6 border-b border-gray-100">
+        <div className="modal-backdrop">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-sm">
+            <div className="p-4 sm:p-6 border-b border-gray-100">
               <h3 className="text-lg font-bold text-gray-900">ตั้งค่าค่าจ้างรายวัน</h3>
               <p className="text-sm text-gray-500 mt-1">{dailyRateModal.name}</p>
             </div>
@@ -713,7 +720,7 @@ export default function PayrollPage() {
                 />
               </div>
             </div>
-            <div className="p-6 border-t border-gray-100 flex justify-end gap-3">
+            <div className="p-4 sm:p-6 border-t border-gray-100 flex justify-end gap-3">
               <button className="btn-secondary" onClick={() => setDailyRateModal(null)}>ยกเลิก</button>
               <button
                 className="btn-primary"

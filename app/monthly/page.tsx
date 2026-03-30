@@ -63,11 +63,11 @@ export default function MonthlyPage() {
     }
   ), [summary, lSortKey, lSortDir])
 
-  if (!isLoaded) return <div className="p-8 text-center text-gray-400">⏳ กำลังโหลด...</div>
+  if (!isLoaded) return <div className="page-container text-center text-gray-400">⏳ กำลังโหลด...</div>
 
   if (master.length === 0) {
     return (
-      <div className="p-8 text-center">
+      <div className="page-container text-center">
         <p className="text-gray-400 py-8">{isRegularUser ? 'ยังไม่มีข้อมูลของคุณในระบบ' : 'ยังไม่มีข้อมูลการสแกน กรุณาอัปโหลดไฟล์ก่อน'}</p>
       </div>
     )
@@ -81,15 +81,19 @@ export default function MonthlyPage() {
   const hasPayData = summary.some((e) => e.estimatedPay !== undefined)
 
   return (
-    <div className="p-8 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="page-container">
+      {/* Header */}
+      <div className="page-header">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">รายงานรายเดือน</h2>
-          {selected && <p className="text-gray-500 mt-1">{formatThaiMonthYear(selected.year, selected.month)}</p>}
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">รายงานรายเดือน</h2>
+          {selected && <p className="text-gray-500 mt-1 text-sm">{formatThaiMonthYear(selected.year, selected.month)}</p>}
         </div>
-        <div className="flex items-center gap-3">
-          <label className="text-sm text-gray-600 font-medium">เลือกเดือน:</label>
-          <select value={selectedIdx} onChange={(e) => setSelectedIdx(Number(e.target.value))}>
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={selectedIdx}
+            onChange={(e) => setSelectedIdx(Number(e.target.value))}
+            className="flex-1 sm:flex-none !w-auto"
+          >
             {[...months].reverse().map((m, i) => {
               const idx = months.length - 1 - i
               return (
@@ -99,9 +103,9 @@ export default function MonthlyPage() {
               )
             })}
           </select>
-          {summary.length > 0 && (
+          {summary.length > 0 && !isRegularUser && (
             <button
-              className="btn-secondary"
+              className="btn-secondary whitespace-nowrap"
               onClick={() => selected && exportMonthlyReport(summary, selected.year, selected.month)}
             >
               ⬇️ Export Excel
@@ -113,12 +117,12 @@ export default function MonthlyPage() {
       {/* Hours chart */}
       {chartData.length > 0 && (
         <div className="card">
-          <h3 className="font-semibold text-gray-800 mb-4">ชั่วโมงทำงานรวม (ชม.)</h3>
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={chartData} margin={{ top: 0, right: 10, bottom: 20, left: 0 }}>
+          <h3 className="font-semibold text-gray-800 mb-3 text-sm sm:text-base">ชั่วโมงทำงานรวม (ชม.)</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={chartData} margin={{ top: 0, right: 8, bottom: 24, left: -10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="name" tick={{ fontSize: 12 }} angle={-30} textAnchor="end" interval={0} />
-              <YAxis tick={{ fontSize: 12 }} />
+              <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-30} textAnchor="end" interval={0} />
+              <YAxis tick={{ fontSize: 10 }} />
               <Tooltip />
               <Bar dataKey="ชม.ทำงาน" fill="#3b82f6" radius={[4, 4, 0, 0]} />
             </BarChart>
@@ -127,83 +131,137 @@ export default function MonthlyPage() {
       )}
 
       {/* Summary Table */}
-      <div className="card">
-        <h3 className="font-semibold text-gray-800 mb-4">สรุปรายบุคคล</h3>
+      <div className="card !p-0 overflow-hidden">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100">
+          <h3 className="font-semibold text-gray-800 text-sm sm:text-base">สรุปรายบุคคล</h3>
+        </div>
         {summary.length === 0 ? (
-          <p className="text-center text-gray-400 py-8">ไม่มีข้อมูลสำหรับเดือนนี้</p>
+          <p className="text-center text-gray-400 py-8 text-sm">ไม่มีข้อมูลสำหรับเดือนนี้</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr>
-                  {([
-                    { key: 'name', label: 'ชื่อ', cls: '' },
-                    { key: 'employmentType', label: 'ประเภท', cls: 'text-center' },
-                    { key: 'workingDaysInMonth', label: 'วันทำงาน', cls: 'text-center' },
-                    { key: 'daysPresent', label: 'มาทำงาน', cls: 'text-center' },
-                    { key: 'daysLate', label: 'สาย', cls: 'text-center' },
-                    { key: 'daysAbsent', label: 'ขาดงาน', cls: 'text-center' },
-                    { key: 'totalWorkHours', label: 'รวมชม.', cls: 'text-center' },
-                    { key: 'attendanceRate', label: 'มาทำงาน%', cls: 'text-center' },
-                    { key: 'punctualityRate', label: 'ตรงเวลา%', cls: 'text-center' },
-                    ...(hasPayData ? [{ key: 'estimatedPay' as MonthlySortKey, label: 'ค่าจ้างประมาณ', cls: 'text-center' }] : []),
-                  ] as { key: MonthlySortKey; label: string; cls: string }[]).map((col) => (
-                    <th key={col.key} className={`table-header ${col.cls}`}>
-                      <button onClick={() => mHandleSort(col.key)} className="inline-flex items-center gap-0.5 hover:text-blue-600 transition-colors font-semibold">
-                        {col.label}<SortIcon active={mSortKey === col.key} dir={mSortDir} />
-                      </button>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {sortedSummary.map((emp) => (
-                  <tr key={emp.employeeId} className="hover:bg-gray-50">
-                    <td className="table-cell font-medium">{emp.name}</td>
-                    <td className="table-cell text-center">
-                      {emp.employmentType === 'daily' ? (
-                        <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">รายวัน</span>
-                      ) : emp.employmentType === 'monthly' ? (
-                        <span className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full">รายเดือน</span>
-                      ) : <span className="text-gray-400 text-xs">-</span>}
-                    </td>
-                    <td className="table-cell text-center text-gray-500">{emp.workingDaysInMonth}</td>
-                    <td className="table-cell text-center font-medium">{emp.daysPresent}</td>
-                    <td className="table-cell text-center">
-                      <span className={emp.daysLate > 0 ? 'text-yellow-600 font-medium' : 'text-gray-400'}>{emp.daysLate}</span>
-                    </td>
-                    <td className="table-cell text-center">
-                      <span className={emp.daysAbsent > 0 ? 'text-red-600 font-medium' : 'text-gray-400'}>{emp.daysAbsent}</span>
-                    </td>
-                    <td className="table-cell text-center">{formatHours(emp.totalWorkHours)}</td>
-                    <td className="table-cell text-center">
-                      <span className={`font-medium ${emp.attendanceRate >= 90 ? 'text-green-600' : emp.attendanceRate >= 75 ? 'text-yellow-600' : 'text-red-600'}`}>
-                        {emp.attendanceRate.toFixed(1)}%
+          <>
+            {/* Mobile cards */}
+            <div className="sm:hidden divide-y divide-gray-100">
+              {sortedSummary.map((emp) => (
+                <div key={emp.employeeId} className="p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-gray-800 text-sm">{emp.name}</p>
+                      <div className="mt-0.5">
+                        {emp.employmentType === 'daily'
+                          ? <span className="text-xs bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full">รายวัน</span>
+                          : emp.employmentType === 'monthly'
+                          ? <span className="text-xs bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded-full">รายเดือน</span>
+                          : null}
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <span className={`text-sm font-bold ${emp.attendanceRate >= 90 ? 'text-green-600' : emp.attendanceRate >= 75 ? 'text-yellow-600' : 'text-red-600'}`}>
+                        {emp.attendanceRate.toFixed(0)}%
                       </span>
-                    </td>
-                    <td className="table-cell text-center">
-                      <span className={`font-medium ${emp.punctualityRate >= 90 ? 'text-green-600' : emp.punctualityRate >= 75 ? 'text-yellow-600' : 'text-red-600'}`}>
-                        {emp.punctualityRate.toFixed(1)}%
-                      </span>
-                    </td>
-                    {hasPayData && (
-                      <td className="table-cell text-center font-medium text-blue-700">
-                        {emp.estimatedPay !== undefined ? formatCurrency(emp.estimatedPay) : '-'}
-                      </td>
-                    )}
+                      {hasPayData && emp.estimatedPay !== undefined && (
+                        <p className="text-xs text-blue-700 font-medium mt-0.5">{formatCurrency(emp.estimatedPay)}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
+                    <span className="text-xs text-gray-500">วันทำงาน <b className="text-gray-700">{emp.workingDaysInMonth}</b></span>
+                    <span className="text-xs text-gray-500">มา <b className="text-green-600">{emp.daysPresent}</b></span>
+                    {emp.daysLate > 0 && <span className="text-xs text-yellow-600">สาย {emp.daysLate} วัน</span>}
+                    {emp.daysAbsent > 0 && <span className="text-xs text-red-600">ขาด {emp.daysAbsent} วัน</span>}
+                    <span className="text-xs text-gray-500">{formatHours(emp.totalWorkHours)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Desktop table */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr>
+                    {([
+                      { key: 'name', label: 'ชื่อ', cls: '' },
+                      { key: 'employmentType', label: 'ประเภท', cls: 'text-center' },
+                      { key: 'workingDaysInMonth', label: 'วันทำงาน', cls: 'text-center' },
+                      { key: 'daysPresent', label: 'มาทำงาน', cls: 'text-center' },
+                      { key: 'daysLate', label: 'สาย', cls: 'text-center' },
+                      { key: 'daysAbsent', label: 'ขาดงาน', cls: 'text-center' },
+                      { key: 'totalWorkHours', label: 'รวมชม.', cls: 'text-center' },
+                      { key: 'attendanceRate', label: 'มาทำงาน%', cls: 'text-center' },
+                      { key: 'punctualityRate', label: 'ตรงเวลา%', cls: 'text-center' },
+                      ...(hasPayData ? [{ key: 'estimatedPay' as MonthlySortKey, label: 'ค่าจ้างประมาณ', cls: 'text-center' }] : []),
+                    ] as { key: MonthlySortKey; label: string; cls: string }[]).map((col) => (
+                      <th key={col.key} className={`table-header ${col.cls}`}>
+                        <button onClick={() => mHandleSort(col.key)} className="inline-flex items-center gap-0.5 hover:text-blue-600 transition-colors font-semibold">
+                          {col.label}<SortIcon active={mSortKey === col.key} dir={mSortDir} />
+                        </button>
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {sortedSummary.map((emp) => (
+                    <tr key={emp.employeeId} className="hover:bg-gray-50">
+                      <td className="table-cell font-medium">{emp.name}</td>
+                      <td className="table-cell text-center">
+                        {emp.employmentType === 'daily' ? (
+                          <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">รายวัน</span>
+                        ) : emp.employmentType === 'monthly' ? (
+                          <span className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full">รายเดือน</span>
+                        ) : <span className="text-gray-400 text-xs">-</span>}
+                      </td>
+                      <td className="table-cell text-center text-gray-500">{emp.workingDaysInMonth}</td>
+                      <td className="table-cell text-center font-medium">{emp.daysPresent}</td>
+                      <td className="table-cell text-center">
+                        <span className={emp.daysLate > 0 ? 'text-yellow-600 font-medium' : 'text-gray-400'}>{emp.daysLate}</span>
+                      </td>
+                      <td className="table-cell text-center">
+                        <span className={emp.daysAbsent > 0 ? 'text-red-600 font-medium' : 'text-gray-400'}>{emp.daysAbsent}</span>
+                      </td>
+                      <td className="table-cell text-center">{formatHours(emp.totalWorkHours)}</td>
+                      <td className="table-cell text-center">
+                        <span className={`font-medium ${emp.attendanceRate >= 90 ? 'text-green-600' : emp.attendanceRate >= 75 ? 'text-yellow-600' : 'text-red-600'}`}>
+                          {emp.attendanceRate.toFixed(1)}%
+                        </span>
+                      </td>
+                      <td className="table-cell text-center">
+                        <span className={`font-medium ${emp.punctualityRate >= 90 ? 'text-green-600' : emp.punctualityRate >= 75 ? 'text-yellow-600' : 'text-red-600'}`}>
+                          {emp.punctualityRate.toFixed(1)}%
+                        </span>
+                      </td>
+                      {hasPayData && (
+                        <td className="table-cell text-center font-medium text-blue-700">
+                          {emp.estimatedPay !== undefined ? formatCurrency(emp.estimatedPay) : '-'}
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
       {/* Late detail */}
       {summary.some((e) => e.totalLateMinutes > 0) && (
-        <div className="card">
-          <h3 className="font-semibold text-gray-800 mb-4">รายละเอียดการมาสาย</h3>
-          <div className="overflow-x-auto">
+        <div className="card !p-0 overflow-hidden">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100">
+            <h3 className="font-semibold text-gray-800 text-sm sm:text-base">รายละเอียดการมาสาย</h3>
+          </div>
+          {/* Mobile cards */}
+          <div className="sm:hidden divide-y divide-gray-100">
+            {sortedLate.map((emp) => (
+              <div key={emp.employeeId} className="p-4 flex items-center justify-between gap-3">
+                <p className="font-medium text-gray-800 text-sm">{emp.name}</p>
+                <div className="text-right">
+                  <p className="text-sm font-medium text-yellow-600">{emp.daysLate} วัน · {formatMinutes(emp.totalLateMinutes)}</p>
+                  <p className="text-xs text-gray-400">เฉลี่ย {emp.daysLate > 0 ? formatMinutes(Math.round(emp.totalLateMinutes / emp.daysLate)) : '-'}/วัน</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Desktop table */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr>
@@ -223,15 +281,15 @@ export default function MonthlyPage() {
               </thead>
               <tbody>
                 {sortedLate.map((emp) => (
-                    <tr key={emp.employeeId} className="hover:bg-gray-50">
-                      <td className="table-cell font-medium">{emp.name}</td>
-                      <td className="table-cell text-center text-yellow-600 font-medium">{emp.daysLate} วัน</td>
-                      <td className="table-cell text-center text-yellow-600">{formatMinutes(emp.totalLateMinutes)}</td>
-                      <td className="table-cell text-center text-gray-500">
-                        {emp.daysLate > 0 ? formatMinutes(Math.round(emp.totalLateMinutes / emp.daysLate)) : '-'}
-                      </td>
-                    </tr>
-                  ))}
+                  <tr key={emp.employeeId} className="hover:bg-gray-50">
+                    <td className="table-cell font-medium">{emp.name}</td>
+                    <td className="table-cell text-center text-yellow-600 font-medium">{emp.daysLate} วัน</td>
+                    <td className="table-cell text-center text-yellow-600">{formatMinutes(emp.totalLateMinutes)}</td>
+                    <td className="table-cell text-center text-gray-500">
+                      {emp.daysLate > 0 ? formatMinutes(Math.round(emp.totalLateMinutes / emp.daysLate)) : '-'}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

@@ -243,7 +243,7 @@ export default function LeavesPage() {
     : []
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="page-container">
       {/* Payroll sync toast */}
       {syncMsg && (
         <div className={`fixed bottom-6 right-6 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-medium transition-all ${
@@ -253,20 +253,20 @@ export default function LeavesPage() {
         </div>
       )}
 
-      <div className="flex items-center justify-between">
+      <div className="page-header">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">ระบบการลา</h2>
-          <p className="text-gray-500 mt-1">บันทึกและจัดการใบลาพนักงาน</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">ระบบการลา</h2>
+          <p className="text-gray-500 mt-1 text-sm">บันทึกและจัดการใบลาพนักงาน</p>
         </div>
-        {!canManage && <button className="btn-primary" onClick={() => setShowForm(true)}>+ ขอลา</button>}
+        {!canManage && <button className="btn-primary self-start sm:self-auto" onClick={() => setShowForm(true)}>+ ขอลา</button>}
       </div>
 
       {/* Tabs */}
       {canManage && (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {tabs.map((t) => (
             <button key={t.key} onClick={() => setTab(t.key as typeof tab)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === t.key ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}>
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${tab === t.key ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}>
               {t.label}
             </button>
           ))}
@@ -275,12 +275,14 @@ export default function LeavesPage() {
 
       {/* My Leaves — only for regular users (not admin/manager) */}
       {!canManage && (
-        <div className="card">
-          <h3 className="font-semibold text-gray-800 mb-4">ประวัติการลาของฉัน</h3>
+        <div className="card !p-0 overflow-hidden">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100">
+            <h3 className="font-semibold text-gray-800 text-sm sm:text-base">ประวัติการลาของฉัน</h3>
+          </div>
           {myLeaves.filter(l => !canManage || l.employee_id === user?.employeeId).length === 0 ? (
-            <p className="text-center text-gray-400 py-8">ไม่มีประวัติการลา</p>
+            <p className="text-center text-gray-400 py-8 text-sm">ไม่มีประวัติการลา</p>
           ) : (
-            <table className="w-full">
+            <div className="overflow-x-auto"><table className="w-full">
               <thead><tr>
                 {([
                   { key: 'date', label: 'วันที่', cls: '' },
@@ -340,16 +342,16 @@ export default function LeavesPage() {
                     </tr>
                   ))}
               </tbody>
-            </table>
+            </table></div>
           )}
         </div>
       )}
 
       {/* All Leaves History (manager/admin) */}
       {tab === 'all' && canManage && (
-        <div className="card">
-          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-            <h3 className="font-semibold text-gray-800">
+        <div className="card !p-0 overflow-hidden">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
+            <h3 className="font-semibold text-gray-800 text-sm sm:text-base">
               ประวัติการลาทั้งหมด
               {showDeleted && (
                 <span className="ml-2 text-xs font-normal text-gray-400">
@@ -369,9 +371,9 @@ export default function LeavesPage() {
           </div>
 
           {allLeaves.length === 0 ? (
-            <p className="text-center text-gray-400 py-8">ไม่มีประวัติการลา</p>
+            <p className="text-center text-gray-400 py-8 text-sm">ไม่มีประวัติการลา</p>
           ) : (
-            <table className="w-full">
+            <div className="overflow-x-auto"><table className="w-full">
               <thead><tr>
                 {([
                   { key: 'employeeName', label: 'พนักงาน', cls: '' },
@@ -464,19 +466,21 @@ export default function LeavesPage() {
                   )
                 })}
               </tbody>
-            </table>
+            </table></div>
           )}
         </div>
       )}
 
       {/* Pending Approvals */}
       {tab === 'pending' && canManage && (
-        <div className="card">
-          <h3 className="font-semibold text-gray-800 mb-4">รออนุมัติ</h3>
+        <div className="card !p-0 overflow-hidden">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100">
+            <h3 className="font-semibold text-gray-800 text-sm sm:text-base">รออนุมัติ</h3>
+          </div>
           {pendingLeaves.length === 0 ? (
-            <p className="text-center text-gray-400 py-8">ไม่มีใบลาที่รออนุมัติ</p>
+            <p className="text-center text-gray-400 py-8 text-sm">ไม่มีใบลาที่รออนุมัติ</p>
           ) : (
-            <table className="w-full">
+            <div className="overflow-x-auto"><table className="w-full">
               <thead><tr>
                 {([
                   { key: 'employeeName', label: 'พนักงาน', cls: '' },
@@ -521,17 +525,17 @@ export default function LeavesPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           )}
         </div>
       )}
 
       {/* Leave Request Form */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
-            <div className="p-6 border-b border-gray-100"><h3 className="text-lg font-bold">ขอลา</h3></div>
-            <div className="p-6 space-y-4">
+        <div className="modal-backdrop">
+          <div className="modal-panel">
+            <div className="p-4 sm:p-6 border-b border-gray-100"><h3 className="text-lg font-bold">ขอลา</h3></div>
+            <div className="p-4 sm:p-6 space-y-4">
               {canManage && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">พนักงาน</label>
@@ -568,7 +572,7 @@ export default function LeavesPage() {
               </div>
               {formError && <p className="text-red-600 text-sm">⚠️ {formError}</p>}
             </div>
-            <div className="p-6 border-t border-gray-100 flex justify-end gap-3">
+            <div className="p-4 sm:p-6 border-t border-gray-100 flex justify-end gap-3">
               <button className="btn-secondary" onClick={() => setShowForm(false)}>ยกเลิก</button>
               <button className="btn-primary" onClick={handleSubmitLeave} disabled={loading}>{loading ? 'กำลังบันทึก...' : 'ยื่นใบลา'}</button>
             </div>
@@ -578,13 +582,13 @@ export default function LeavesPage() {
 
       {/* Edit Leave Modal */}
       {editModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
-            <div className="p-6 border-b border-gray-100">
+        <div className="modal-backdrop">
+          <div className="modal-panel">
+            <div className="p-4 sm:p-6 border-b border-gray-100">
               <h3 className="text-lg font-bold">แก้ไขใบลา</h3>
               <p className="text-sm text-gray-500 mt-1">{editModal.employee_name || editModal.employee_id}</p>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-4 sm:p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">ประเภทการลา</label>
                 <select className="w-full" value={editForm.leaveType} onChange={(e) => setEditForm({ ...editForm, leaveType: e.target.value })}>
@@ -615,7 +619,7 @@ export default function LeavesPage() {
                 </div>
               )}
             </div>
-            <div className="p-6 border-t border-gray-100 flex justify-end gap-3">
+            <div className="p-4 sm:p-6 border-t border-gray-100 flex justify-end gap-3">
               <button className="btn-secondary" onClick={() => setEditModal(null)}>ยกเลิก</button>
               <button className="btn-primary" onClick={handleSaveEdit} disabled={loading}>{loading ? 'กำลังบันทึก...' : 'บันทึก'}</button>
             </div>
@@ -625,8 +629,8 @@ export default function LeavesPage() {
 
       {/* Reject Modal */}
       {rejectModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+        <div className="modal-backdrop">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-sm p-4 sm:p-6">
             <h3 className="text-lg font-bold mb-4">เหตุผลการปฏิเสธ</h3>
             <input type="text" className="w-full" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="ระบุเหตุผล (ไม่บังคับ)" />
             <div className="flex gap-3 justify-end mt-4">
