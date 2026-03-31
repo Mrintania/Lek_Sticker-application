@@ -145,6 +145,17 @@ export default function ProductionPage() {
     return assignmentEdits[machineId] ?? { slot1: '', slot2: '' }
   }
 
+  /** คืน Set ของ employee_id ที่ถูกเลือกในทุก slot/ทุกแท่น ยกเว้น slot นั้นๆ (เพื่อให้ current value ยังเลือกอยู่ได้) */
+  function getUsedEmployeeIds(excludeMachineId: number, excludeSlot: number): Set<string> {
+    const used = new Set<string>()
+    for (const [machId, asg] of Object.entries(assignmentEdits)) {
+      const mId = Number(machId)
+      if (asg.slot1 && !(mId === excludeMachineId && excludeSlot === 1)) used.add(asg.slot1)
+      if (asg.slot2 && !(mId === excludeMachineId && excludeSlot === 2)) used.add(asg.slot2)
+    }
+    return used
+  }
+
   function getItemsForMachine(machineId: number): ProductionItem[] {
     return itemEdits[machineId] ?? [{ model_name: '', quantity: '' }]
   }
@@ -339,24 +350,38 @@ export default function ProductionPage() {
                   <div className="p-3 rounded-xl bg-gray-50 border border-gray-100">
                     <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">มอบหมายพนักงาน</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {[1, 2].map((slot) => (
+                      {[1, 2].map((slot) => {
+                        const currentVal = slot === 1 ? asg.slot1 : asg.slot2
+                        const usedIds = getUsedEmployeeIds(machine.id, slot)
+                        return (
                         <div key={slot} className="flex items-center gap-2">
                           <span className="text-xs text-gray-500 shrink-0 w-12">Slot {slot}:</span>
                           <select
                             className="flex-1 text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white"
-                            value={slot === 1 ? asg.slot1 : asg.slot2}
+                            value={currentVal}
                             onChange={(e) => setAssignmentEdits(prev => ({
                               ...prev,
                               [machine.id]: { ...getAssignmentForMachine(machine.id), [`slot${slot}`]: e.target.value }
                             }))}
                           >
                             <option value="">— ไม่มี —</option>
-                            {employees.map(emp => (
-                              <option key={emp.employeeId} value={emp.employeeId}>{emp.name}</option>
-                            ))}
+                            {employees.map(emp => {
+                              const isUsedElsewhere = usedIds.has(emp.employeeId)
+                              return (
+                                <option
+                                  key={emp.employeeId}
+                                  value={emp.employeeId}
+                                  disabled={isUsedElsewhere}
+                                  style={isUsedElsewhere ? { color: '#9ca3af' } : undefined}
+                                >
+                                  {emp.name}{isUsedElsewhere ? ' (ถูกมอบหมายแล้ว)' : ''}
+                                </option>
+                              )
+                            })}
                           </select>
                         </div>
-                      ))}
+                        )
+                      })}
                     </div>
                     <button
                       onClick={() => saveAssignment(machine.id)}
@@ -372,25 +397,25 @@ export default function ProductionPage() {
                     <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">รายการผลงาน</p>
                     <div className="space-y-2">
                       {items.map((item, idx) => (
-                        <div key={idx} className="flex items-center gap-2">
+                        <div key={idx} className="grid items-center gap-2" style={{ gridTemplateColumns: '1fr 5rem auto auto' }}>
                           <input
                             type="text"
                             placeholder="ชื่อรุ่น"
-                            className="flex-1 text-sm"
+                            className="min-w-0 text-sm"
                             value={item.model_name}
                             onChange={(e) => updateItem(machine.id, idx, 'model_name', e.target.value)}
                           />
                           <input
                             type="number"
                             placeholder="จำนวน"
-                            className="w-24 text-sm text-right"
+                            className="w-full text-sm text-right"
                             min={1}
                             value={item.quantity}
                             onChange={(e) => updateItem(machine.id, idx, 'quantity', e.target.value)}
                           />
-                          <span className="text-xs text-gray-400 shrink-0">ชิ้น</span>
+                          <span className="text-xs text-gray-400 whitespace-nowrap">ชิ้น</span>
                           <button onClick={() => removeItem(machine.id, idx)}
-                            className="text-gray-300 hover:text-red-400 transition-colors shrink-0 text-lg leading-none">×</button>
+                            className="text-gray-300 hover:text-red-400 transition-colors text-lg leading-none">×</button>
                         </div>
                       ))}
                     </div>

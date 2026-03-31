@@ -9,6 +9,16 @@ type MyLeaveSortKey = 'date' | 'leaveType' | 'status'
 type AllLeaveSortKey = 'employeeName' | 'date' | 'leaveType' | 'status'
 type PendingSortKey = 'employeeName' | 'date' | 'leaveType'
 
+function getTodayStr() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function getCurrentMinutes() {
+  const d = new Date()
+  return d.getHours() * 60 + d.getMinutes()
+}
+
 const LEAVE_TYPE_LABELS: Record<string, string> = {
   sick: 'ลาป่วย (มีใบรับรองแพทย์)',
   full_day: 'ลาทั้งวัน',
@@ -133,6 +143,21 @@ export default function LeavesPage() {
 
   async function handleSubmitLeave() {
     if (!form.date || !form.leaveType) { setFormError('กรุณากรอกข้อมูลให้ครบ'); return }
+
+    const today = getTodayStr()
+
+    // ห้าม user ลาย้อนหลัง
+    if (!canManage && form.date < today) {
+      setFormError('ไม่สามารถลาย้อนหลังได้ กรุณาเลือกวันที่ตั้งแต่วันนี้เป็นต้นไป')
+      return
+    }
+
+    // ลาครึ่งวันบ่าย ต้องขอก่อน 13.00 น.
+    if (form.date === today && form.leaveType === 'half_afternoon' && getCurrentMinutes() >= 13 * 60) {
+      setFormError('ลาครึ่งวันบ่ายต้องขอก่อน 13.00 น. ไม่สามารถทำรายการได้')
+      return
+    }
+
     setLoading(true)
     setFormError('')
     try {
@@ -206,6 +231,21 @@ export default function LeavesPage() {
 
   async function handleSaveEdit() {
     if (!editModal) return
+
+    const today = getTodayStr()
+
+    // ห้าม user ลาย้อนหลัง
+    if (!canManage && editForm.date < today) {
+      alert('ไม่สามารถลาย้อนหลังได้ กรุณาเลือกวันที่ตั้งแต่วันนี้เป็นต้นไป')
+      return
+    }
+
+    // ลาครึ่งวันบ่าย ต้องขอก่อน 13.00 น.
+    if (!canManage && editForm.date === today && editForm.leaveType === 'half_afternoon' && getCurrentMinutes() >= 13 * 60) {
+      alert('ลาครึ่งวันบ่ายต้องขอก่อน 13.00 น. ไม่สามารถทำรายการได้')
+      return
+    }
+
     setLoading(true)
     try {
       const res = await fetch(`/api/leaves/${editModal.id}`, {
@@ -562,9 +602,28 @@ export default function LeavesPage() {
                   📋 ลาทั้งวัน — นับเป็นขาดงาน 1 วัน
                 </div>
               )}
+              {form.leaveType === 'half_afternoon' && (
+                <div className="bg-purple-50 border border-purple-100 rounded-lg px-3 py-2 text-xs text-purple-700">
+                  🕐 ลาครึ่งวันบ่าย — ต้องขอก่อน 13.00 น. ของวันที่ต้องการลา
+                </div>
+              )}
+              {form.leaveType === 'half_morning' && (
+                <div className="bg-purple-50 border border-purple-100 rounded-lg px-3 py-2 text-xs text-purple-700">
+                  🌅 ลาครึ่งวันเช้า — ต้องขอก่อนเวลาเริ่มงาน
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">วันที่ลา</label>
-                <input type="date" className="w-full" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+                <input
+                  type="date"
+                  className="w-full"
+                  value={form.date}
+                  min={!canManage ? getTodayStr() : undefined}
+                  onChange={(e) => setForm({ ...form, date: e.target.value })}
+                />
+                {!canManage && (
+                  <p className="text-xs text-gray-400 mt-1">⚠️ ไม่สามารถลาย้อนหลังได้</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">เหตุผล (ไม่บังคับ)</label>
@@ -607,7 +666,16 @@ export default function LeavesPage() {
               )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">วันที่ลา</label>
-                <input type="date" className="w-full" value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} />
+                <input
+                  type="date"
+                  className="w-full"
+                  value={editForm.date}
+                  min={!canManage ? getTodayStr() : undefined}
+                  onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
+                />
+                {!canManage && (
+                  <p className="text-xs text-gray-400 mt-1">⚠️ ไม่สามารถลาย้อนหลังได้</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">เหตุผล</label>

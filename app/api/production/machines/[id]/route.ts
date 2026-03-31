@@ -3,11 +3,12 @@ import { getDb } from '@/lib/db'
 import { getUserFromRequest, canManage } from '@/lib/auth'
 import { logAudit, getIp } from '@/lib/audit'
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id: rawId } = await params
   const user = getUserFromRequest(req)
   if (!user || !canManage(user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const id = Number(params.id)
+  const id = Number(rawId)
   const body = await req.json()
   const db = getDb()
 
