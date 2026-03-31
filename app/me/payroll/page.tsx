@@ -32,18 +32,24 @@ export default function MyPayrollPage() {
   const [history, setHistory] = useState<PayrollRec[]>([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<PayrollRec | null>(null)
+  const [expandedKey, setExpandedKey] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user || userLoading) return
     fetch('/api/payroll')
       .then(r => r.ok ? r.json() : [])
-      .then((data: PayrollRec[]) =>
-        setHistory([...data].sort((a, b) =>
+      .then((data: PayrollRec[]) => {
+        const sorted = [...data].sort((a, b) =>
           b.year !== a.year ? b.year - a.year :
           b.month !== a.month ? b.month - a.month :
           a.period - b.period
-        ))
-      )
+        )
+        setHistory(sorted)
+        // Auto-expand latest month
+        if (sorted.length > 0) {
+          setExpandedKey(`${sorted[0].year}-${sorted[0].month}`)
+        }
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [user, userLoading])
@@ -65,13 +71,15 @@ export default function MyPayrollPage() {
     return (
       <div className="page-container">
         <div className="space-y-3">
-          {[0,1,2,3,4].map(i => (
-            <div key={i} className="card animate-pulse flex justify-between items-center">
-              <div className="space-y-2">
-                <div className="h-4 bg-gray-200 rounded w-32" />
-                <div className="h-3 bg-gray-100 rounded w-24" />
+          {[0,1,2,3].map(i => (
+            <div key={i} className="card animate-pulse">
+              <div className="flex justify-between items-center">
+                <div className="space-y-2">
+                  <div className="h-4 bg-gray-200 rounded w-28" />
+                  <div className="h-3 bg-gray-100 rounded w-20" />
+                </div>
+                <div className="h-6 bg-gray-200 rounded w-24" />
               </div>
-              <div className="h-5 bg-gray-200 rounded w-20" />
             </div>
           ))}
         </div>
@@ -81,123 +89,223 @@ export default function MyPayrollPage() {
 
   return (
     <div className="page-container">
-      <h2 className="text-xl font-bold text-gray-900">ประวัติเงินเดือน</h2>
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-1">
+        <div className="w-10 h-10 bg-green-100 rounded-2xl flex items-center justify-center text-xl">💰</div>
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">ประวัติเงินเดือน</h2>
+          <p className="text-xs text-gray-400">กดที่รอบเพื่อดูรายละเอียด</p>
+        </div>
+      </div>
 
       {grouped.length === 0 ? (
-        <div className="card text-center py-12">
-          <p className="text-4xl mb-3">💰</p>
-          <p className="text-gray-400 text-sm">ยังไม่มีข้อมูลเงินเดือน</p>
+        <div className="card text-center py-16">
+          <p className="text-5xl mb-3">📭</p>
+          <p className="text-gray-500 font-medium">ยังไม่มีข้อมูลเงินเดือน</p>
+          <p className="text-gray-400 text-sm mt-1">ข้อมูลจะแสดงหลังจากที่ผู้ดูแลระบบคำนวณเงินเดือน</p>
         </div>
       ) : (
-        <div className="card !p-0 overflow-hidden">
-          {grouped.map((g, gi) => (
-            <div key={`${g.year}-${g.month}`} className={gi > 0 ? 'border-t border-gray-100' : ''}>
-              {/* Month header */}
-              <div className="px-4 py-2 bg-gray-50 flex items-center justify-between">
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  {formatThaiMonthYear(g.year, g.month)}
-                </span>
-                {g.records.length > 1 && (
-                  <span className="text-xs text-gray-400">
-                    รวม {formatCurrency(g.records.reduce((s, r) => s + r.total_pay, 0))}
-                  </span>
-                )}
-              </div>
-              {/* Period rows */}
-              <div className="divide-y divide-gray-50">
-                {g.records.map(p => (
-                  <button
-                    key={`${p.year}-${p.month}-${p.period}`}
-                    className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 transition-colors text-left"
-                    onClick={() => setSelected(p)}
-                  >
-                    <div>
-                      <p className="text-sm font-semibold text-gray-800">
-                        รอบ {p.period}
-                        <span className="ml-1.5 text-xs font-normal text-gray-400">
-                          {p.period === 1 ? '(1–15)' : '(16–สิ้นเดือน)'}
-                        </span>
+        <div className="space-y-3">
+          {grouped.map((g) => {
+            const key = `${g.year}-${g.month}`
+            const isOpen = expandedKey === key
+            const monthTotal = g.records.reduce((s, r) => s + r.total_pay, 0)
+            const hasBothPeriods = g.records.length === 2
+
+            return (
+              <div key={key} className="card !p-0 overflow-hidden">
+                {/* Month header — click to expand/collapse */}
+                <button
+                  className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 transition-colors"
+                  onClick={() => setExpandedKey(isOpen ? null : key)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isOpen ? 'bg-blue-500' : 'bg-gray-300'}`} />
+                    <div className="text-left">
+                      <p className="text-sm font-bold text-gray-800">
+                        {formatThaiMonthYear(g.year, g.month)}
                       </p>
                       <p className="text-xs text-gray-400 mt-0.5">
-                        มา {p.days_present}/{p.working_days} วัน
-                        {p.days_absent > 0 && <span className="text-red-500 ml-2">ขาด {p.days_absent} วัน</span>}
+                        {hasBothPeriods ? '2 รอบ' : `${g.records.length} รอบ`}
                       </p>
                     </div>
-                    <div className="text-right flex-shrink-0 ml-4">
-                      <p className="text-sm font-bold text-green-600">{formatCurrency(p.total_pay)}</p>
-                      {p.diligence_bonus > 0 && (
-                        <p className="text-xs text-gray-400">+{formatCurrency(p.diligence_bonus)} เบี้ยขยัน</p>
-                      )}
-                    </div>
-                  </button>
-                ))}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-base font-bold text-green-600">
+                      {formatCurrency(monthTotal)}
+                    </span>
+                    <svg
+                      className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </button>
+
+                {/* Period cards — shown when expanded */}
+                {isOpen && (
+                  <div className="border-t border-gray-100 bg-gray-50 px-3 py-3 space-y-2">
+                    {g.records.map(p => {
+                      const attendRate = p.working_days > 0
+                        ? Math.round((p.days_present / p.working_days) * 100)
+                        : 100
+                      return (
+                        <button
+                          key={`${p.year}-${p.month}-${p.period}`}
+                          className="w-full bg-white rounded-2xl px-4 py-3.5 shadow-sm border border-gray-100 hover:border-blue-200 hover:shadow-md transition-all text-left"
+                          onClick={() => setSelected(p)}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            {/* Left: period badge + attendance */}
+                            <div className="flex items-start gap-3">
+                              <div className={`mt-0.5 flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-xl ${
+                                p.period === 1
+                                  ? 'bg-blue-50 text-blue-600'
+                                  : 'bg-purple-50 text-purple-600'
+                              }`}>
+                                รอบ {p.period}
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-500 font-medium">
+                                  {p.period === 1 ? 'วันที่ 1 – 15' : 'วันที่ 16 – สิ้นเดือน'}
+                                </p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-xs text-gray-600">
+                                    มา {p.days_present}/{p.working_days} วัน
+                                  </span>
+                                  {p.days_absent > 0 && (
+                                    <span className="text-xs text-red-500 font-medium bg-red-50 px-1.5 py-0.5 rounded-lg">
+                                      ขาด {p.days_absent} วัน
+                                    </span>
+                                  )}
+                                </div>
+                                {/* Attendance bar */}
+                                <div className="mt-1.5 w-28 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full transition-all ${
+                                      attendRate >= 100 ? 'bg-green-400' :
+                                      attendRate >= 80 ? 'bg-yellow-400' : 'bg-red-400'
+                                    }`}
+                                    style={{ width: `${attendRate}%` }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                            {/* Right: pay */}
+                            <div className="text-right flex-shrink-0">
+                              <p className="text-sm font-bold text-green-600">{formatCurrency(p.total_pay)}</p>
+                              {p.diligence_bonus > 0 && (
+                                <p className="text-xs text-gray-400 mt-0.5">
+                                  +{formatCurrency(p.diligence_bonus)} เบี้ย
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      )
+                    })}
+
+                    {/* Monthly total row */}
+                    {g.records.length > 1 && (
+                      <div className="flex items-center justify-between px-2 pt-1">
+                        <span className="text-xs text-gray-400">รวมเดือนนี้</span>
+                        <span className="text-sm font-bold text-gray-700">{formatCurrency(monthTotal)}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
       {/* Detail Modal */}
       {selected && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-2xl shadow-2xl">
-            <div className="px-6 pt-6 pb-2">
-              <div className="flex items-start justify-between mb-1">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          onClick={() => setSelected(null)}>
+          <div
+            className="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-2xl shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <div className="px-6 pt-5 pb-4 border-b border-gray-100">
+              <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-xs text-gray-400">เงินเดือน — รอบ {selected.period} {selected.period === 1 ? '(1–15)' : '(16–สิ้นเดือน)'}</p>
+                  <div className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-xl mb-2 ${
+                    selected.period === 1 ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'
+                  }`}>
+                    รอบ {selected.period} · {selected.period === 1 ? '1–15' : '16–สิ้นเดือน'}
+                  </div>
                   <h3 className="text-lg font-bold text-gray-900">{formatThaiMonthYear(selected.year, selected.month)}</h3>
                 </div>
                 <button
                   onClick={() => setSelected(null)}
-                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                  className="p-1.5 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
-              <p className="text-4xl font-bold text-green-600 mt-4 mb-2">{formatCurrency(selected.total_pay)}</p>
+              {/* Big total */}
+              <div className="mt-3 p-4 bg-green-50 rounded-2xl text-center">
+                <p className="text-xs text-green-600 mb-1">รับเงินสุทธิ</p>
+                <p className="text-3xl font-bold text-green-600">{formatCurrency(selected.total_pay)}</p>
+              </div>
             </div>
 
-            <div className="px-6 pb-2 border-t border-gray-100 pt-4 space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">มาทำงาน</span>
-                <span className="font-medium text-gray-700">{selected.days_present}/{selected.working_days} วัน</span>
-              </div>
+            {/* Details */}
+            <div className="px-6 py-4 space-y-3">
+              <DetailRow label="มาทำงาน" value={`${selected.days_present}/${selected.working_days} วัน`} />
               {selected.days_absent > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">ขาด/ลา</span>
-                  <span className="font-medium text-red-500">{selected.days_absent} วัน</span>
-                </div>
+                <DetailRow label="ขาด/ลา" value={`${selected.days_absent} วัน`} valueClass="text-red-500" />
               )}
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">เงินเดือนพื้นฐาน</span>
-                <span className="font-medium text-gray-700">{formatCurrency(selected.base_pay)}</span>
+              {selected.days_sick_with_cert > 0 && (
+                <DetailRow label="ลาป่วย (มีใบรับรอง)" value={`${selected.days_sick_with_cert} วัน`} />
+              )}
+              {selected.days_sick_no_cert > 0 && (
+                <DetailRow label="ลาป่วย (ไม่มีใบรับรอง)" value={`${selected.days_sick_no_cert} วัน`} valueClass="text-orange-500" />
+              )}
+              <div className="border-t border-gray-100 pt-3 space-y-2.5">
+                <DetailRow label="เงินเดือนพื้นฐาน" value={formatCurrency(selected.base_pay)} />
+                {selected.diligence_bonus > 0 && (
+                  <DetailRow label="เบี้ยขยัน" value={`+${formatCurrency(selected.diligence_bonus)}`} valueClass="text-green-600" />
+                )}
+                {selected.deductions > 0 && (
+                  <DetailRow label="หักออก" value={`-${formatCurrency(selected.deductions)}`} valueClass="text-red-600" />
+                )}
               </div>
-              {selected.diligence_bonus > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">เบี้ยขยัน</span>
-                  <span className="font-medium text-green-600">+{formatCurrency(selected.diligence_bonus)}</span>
-                </div>
-              )}
-              {selected.deductions > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">หักออก</span>
-                  <span className="font-medium text-red-600">-{formatCurrency(selected.deductions)}</span>
-                </div>
-              )}
-              <div className="flex justify-between pt-3 border-t border-gray-100">
-                <span className="text-sm font-semibold text-gray-700">รวมสุทธิ</span>
+              <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+                <span className="text-sm font-bold text-gray-700">รวมสุทธิ</span>
                 <span className="text-lg font-bold text-green-600">{formatCurrency(selected.total_pay)}</span>
               </div>
             </div>
 
-            <div className="px-6 py-5">
+            <div className="px-6 pb-6">
               <button onClick={() => setSelected(null)} className="btn-secondary w-full">ปิด</button>
             </div>
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function DetailRow({
+  label,
+  value,
+  valueClass = 'text-gray-700',
+}: {
+  label: string
+  value: string
+  valueClass?: string
+}) {
+  return (
+    <div className="flex items-center justify-between text-sm">
+      <span className="text-gray-500">{label}</span>
+      <span className={`font-medium ${valueClass}`}>{value}</span>
     </div>
   )
 }

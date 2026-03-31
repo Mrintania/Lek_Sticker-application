@@ -1,6 +1,5 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
-import Link from 'next/link'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import StatusBadge from '@/components/shared/StatusBadge'
 import {
@@ -215,7 +214,9 @@ export default function MePage() {
     [...leaves].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 5)
   ), [leaves])
 
-  const years = [today.getFullYear() - 1, today.getFullYear(), today.getFullYear() + 1]
+  const currentYear = today.getFullYear()
+  const currentMonth = today.getMonth() + 1
+  const years = [currentYear - 1, currentYear]
 
   if (userLoading) return null
 
@@ -255,19 +256,25 @@ export default function MePage() {
         {/* Month + Year selector */}
         <div className="flex items-center gap-2">
           <div className="flex gap-1 overflow-x-auto pb-1 flex-1 scrollbar-none">
-            {THAI_MONTHS_SHORT.map((m, i) => (
-              <button
-                key={i}
-                onClick={() => setMonth(i + 1)}
-                className={`flex-shrink-0 px-3 py-1.5 text-xs rounded-full font-medium transition-colors ${
-                  month === i + 1
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                {m}
-              </button>
-            ))}
+            {THAI_MONTHS_SHORT.map((m, i) => {
+              const isFuture = year === currentYear && (i + 1) > currentMonth
+              return (
+                <button
+                  key={i}
+                  onClick={() => !isFuture && setMonth(i + 1)}
+                  disabled={isFuture}
+                  className={`flex-shrink-0 px-3 py-1.5 text-xs rounded-full font-medium transition-colors ${
+                    month === i + 1
+                      ? 'bg-blue-600 text-white'
+                      : isFuture
+                        ? 'bg-gray-50 text-gray-300 cursor-not-allowed'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {m}
+                </button>
+              )
+            })}
           </div>
           <select
             value={year}
@@ -277,6 +284,7 @@ export default function MePage() {
             {years.map(y => (
               <option key={y} value={y}>{toBuddhistYear(y)}</option>
             ))}
+
           </select>
         </div>
       </div>
@@ -372,9 +380,8 @@ export default function MePage() {
 
       {/* ── Section 4: Leave Summary ── */}
       <div className="card !p-0 overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+        <div className="px-4 py-3 border-b border-gray-100">
           <h3 className="text-sm font-semibold text-gray-700">สรุปการลา</h3>
-          <Link href="/leaves" className="btn-primary !py-1.5 !px-3 !text-xs">ยื่นใบลา</Link>
         </div>
 
         {/* 3 mini stats */}
