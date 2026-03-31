@@ -200,13 +200,6 @@ export default function ProductionPage() {
       .filter(i => i.model_name.toString().trim() && Number(i.quantity) > 0)
       .map(i => ({ model_name: String(i.model_name).trim(), quantity: Number(i.quantity) }))
 
-    if (items.length === 0) {
-      setSaveMsg(p => ({ ...p, [machineId]: 'กรุณากรอกรายการผลงานอย่างน้อย 1 รายการ' }))
-      setSavingRecord(null)
-      setTimeout(() => setSaveMsg(p => ({ ...p, [machineId]: '' })), 2500)
-      return
-    }
-
     const res = await fetch('/api/production/records', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
