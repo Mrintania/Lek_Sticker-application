@@ -7,6 +7,7 @@ interface PayrollRec {
   employee_id: string
   year: number
   month: number
+  period: number
   working_days: number
   days_present: number
   days_absent: number
@@ -20,6 +21,12 @@ interface PayrollRec {
   total_pay: number
 }
 
+interface MonthGroup {
+  year: number
+  month: number
+  records: PayrollRec[]
+}
+
 export default function MyPayrollPage() {
   const { user, loading: userLoading } = useCurrentUser()
   const [history, setHistory] = useState<PayrollRec[]>([])
@@ -31,11 +38,28 @@ export default function MyPayrollPage() {
     fetch('/api/payroll')
       .then(r => r.ok ? r.json() : [])
       .then((data: PayrollRec[]) =>
-        setHistory([...data].sort((a, b) => b.year !== a.year ? b.year - a.year : b.month - a.month))
+        setHistory([...data].sort((a, b) =>
+          b.year !== a.year ? b.year - a.year :
+          b.month !== a.month ? b.month - a.month :
+          a.period - b.period
+        ))
       )
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [user, userLoading])
+
+  // Group records by year+month
+  const grouped: MonthGroup[] = []
+  const seen = new Map<string, MonthGroup>()
+  for (const rec of history) {
+    const key = `${rec.year}-${rec.month}`
+    if (!seen.has(key)) {
+      const g: MonthGroup = { year: rec.year, month: rec.month, records: [] }
+      seen.set(key, g)
+      grouped.push(g)
+    }
+    seen.get(key)!.records.push(rec)
+  }
 
   if (userLoading || loading) {
     return (
@@ -59,36 +83,57 @@ export default function MyPayrollPage() {
     <div className="page-container">
       <h2 className="text-xl font-bold text-gray-900">ประวัติเงินเดือน</h2>
 
-      {history.length === 0 ? (
+      {grouped.length === 0 ? (
         <div className="card text-center py-12">
           <p className="text-4xl mb-3">💰</p>
           <p className="text-gray-400 text-sm">ยังไม่มีข้อมูลเงินเดือน</p>
         </div>
       ) : (
         <div className="card !p-0 overflow-hidden">
-          <div className="divide-y divide-gray-50">
-            {history.map(p => (
-              <button
-                key={`${p.year}-${p.month}`}
-                className="w-full flex items-center justify-between px-4 py-4 hover:bg-gray-50 transition-colors text-left"
-                onClick={() => setSelected(p)}
-              >
-                <div>
-                  <p className="text-sm font-semibold text-gray-800">{formatThaiMonthYear(p.year, p.month)}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    มา {p.days_present}/{p.working_days} วัน
-                    {p.days_absent > 0 && <span className="text-red-500 ml-2">ขาด {p.days_absent} วัน</span>}
-                  </p>
-                </div>
-                <div className="text-right flex-shrink-0 ml-4">
-                  <p className="text-sm font-bold text-green-600">{formatCurrency(p.total_pay)}</p>
-                  {p.diligence_bonus > 0 && (
-                    <p className="text-xs text-gray-400">+{formatCurrency(p.diligence_bonus)} เบี้ยขยัน</p>
-                  )}
-                </div>
-              </button>
-            ))}
-          </div>
+          {grouped.map((g, gi) => (
+            <div key={`${g.year}-${g.month}`} className={gi > 0 ? 'border-t border-gray-100' : ''}>
+              {/* Month header */}
+              <div className="px-4 py-2 bg-gray-50 flex items-center justify-between">
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  {formatThaiMonthYear(g.year, g.month)}
+                </span>
+                {g.records.length > 1 && (
+                  <span className="text-xs text-gray-400">
+                    รวม {formatCurrency(g.records.reduce((s, r) => s + r.total_pay, 0))}
+                  </span>
+                )}
+              </div>
+              {/* Period rows */}
+              <div className="divide-y divide-gray-50">
+                {g.records.map(p => (
+                  <button
+                    key={`${p.year}-${p.month}-${p.period}`}
+                    className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 transition-colors text-left"
+                    onClick={() => setSelected(p)}
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800">
+                        รอบ {p.period}
+                        <span className="ml-1.5 text-xs font-normal text-gray-400">
+                          {p.period === 1 ? '(1–15)' : '(16–สิ้นเดือน)'}
+                        </span>
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        มา {p.days_present}/{p.working_days} วัน
+                        {p.days_absent > 0 && <span className="text-red-500 ml-2">ขาด {p.days_absent} วัน</span>}
+                      </p>
+                    </div>
+                    <div className="text-right flex-shrink-0 ml-4">
+                      <p className="text-sm font-bold text-green-600">{formatCurrency(p.total_pay)}</p>
+                      {p.diligence_bonus > 0 && (
+                        <p className="text-xs text-gray-400">+{formatCurrency(p.diligence_bonus)} เบี้ยขยัน</p>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -99,7 +144,7 @@ export default function MyPayrollPage() {
             <div className="px-6 pt-6 pb-2">
               <div className="flex items-start justify-between mb-1">
                 <div>
-                  <p className="text-xs text-gray-400">เงินเดือน</p>
+                  <p className="text-xs text-gray-400">เงินเดือน — รอบ {selected.period} {selected.period === 1 ? '(1–15)' : '(16–สิ้นเดือน)'}</p>
                   <h3 className="text-lg font-bold text-gray-900">{formatThaiMonthYear(selected.year, selected.month)}</h3>
                 </div>
                 <button

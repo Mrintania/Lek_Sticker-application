@@ -14,6 +14,7 @@ interface PayrollRecord {
   employment_type: string
   year: number
   month: number
+  period: number
   working_days: number
   days_present: number
   days_absent: number
@@ -48,6 +49,7 @@ export default function PayrollPage() {
   const { user } = useCurrentUser()
   const [year, setYear] = useState(new Date().getFullYear())
   const [month, setMonth] = useState(new Date().getMonth() + 1)
+  const [period, setPeriod] = useState<1 | 2>(new Date().getDate() <= 15 ? 1 : 2)
   const [records, setRecords] = useState<PayrollRecord[]>([])
   const [paySettings, setPaySettings] = useState<PayrollSettings>({
     diligenceBonusEnabled: true,
@@ -116,11 +118,11 @@ export default function PayrollPage() {
     }
     document.addEventListener('visibilitychange', handleVisibility)
     return () => document.removeEventListener('visibilitychange', handleVisibility)
-  }, [year, month])
+  }, [year, month, period])
 
   async function loadPayroll() {
     const [payrollRes, prodRes] = await Promise.all([
-      fetch(`/api/payroll?year=${year}&month=${month}`),
+      fetch(`/api/payroll?year=${year}&month=${month}&period=${period}`),
       fetch(`/api/production/summary?year=${year}&month=${month}`),
     ])
     if (payrollRes.ok) {
@@ -145,7 +147,7 @@ export default function PayrollPage() {
       const res = await fetch('/api/payroll/calculate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ year, month }),
+        body: JSON.stringify({ year, month, period }),
       })
       const data = await res.json()
       if (data.warning === 'no_data') {
@@ -255,9 +257,12 @@ export default function PayrollPage() {
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900">เงินเดือน</h2>
           <div className="flex flex-wrap items-center gap-2 mt-1">
             <p className="text-gray-500 text-sm">{formatThaiMonthYear(year, month)}</p>
+            <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium">
+              {period === 1 ? 'รอบ 1 (1–15)' : `รอบ 2 (16–สิ้นเดือน)`}
+            </span>
             {isCurrentMonth && (
               <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium">
-                ⏳ ยังไม่ครบเดือน (ถึง {today.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })})
+                ⏳ ยังไม่ครบรอบ (ถึง {today.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })})
               </span>
             )}
             {refreshedAt && (
@@ -274,6 +279,21 @@ export default function PayrollPage() {
           <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="!w-auto">
             {years.map((y) => <option key={y} value={y}>{y + 543}</option>)}
           </select>
+          {/* Period selector */}
+          <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
+            <button
+              onClick={() => setPeriod(1)}
+              className={`px-3 py-1.5 font-medium transition-colors ${period === 1 ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+            >
+              รอบ 1
+            </button>
+            <button
+              onClick={() => setPeriod(2)}
+              className={`px-3 py-1.5 font-medium transition-colors border-l border-gray-200 ${period === 2 ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+            >
+              รอบ 2
+            </button>
+          </div>
           {canManage && (
             <>
               <button className="btn-secondary whitespace-nowrap" onClick={() => setShowSettings(!showSettings)}>⚙️ เบี้ยขยัน</button>

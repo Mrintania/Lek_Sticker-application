@@ -10,6 +10,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const year = searchParams.get('year')
   const month = searchParams.get('month')
+  const period = searchParams.get('period')
 
   let query = `SELECT pr.*, e.name, e.employment_type FROM payroll_records pr
     LEFT JOIN employees e ON pr.employee_id = e.employee_id WHERE 1=1`
@@ -24,8 +25,9 @@ export async function GET(req: NextRequest) {
   }
   if (year) { query += ' AND pr.year = ?'; params.push(Number(year)) }
   if (month) { query += ' AND pr.month = ?'; params.push(Number(month)) }
+  if (period) { query += ' AND pr.period = ?'; params.push(Number(period)) }
 
-  query += ' ORDER BY e.name'
+  query += ' ORDER BY e.name, pr.period'
   const records = db.prepare(query).all(...params)
   return NextResponse.json(records)
 }

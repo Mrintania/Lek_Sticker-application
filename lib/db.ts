@@ -69,6 +69,46 @@ export function getDb(): Database.Database {
         ALTER TABLE leaves_new RENAME TO leaves;
       `)
     }
+
+    // Migration: add period column to payroll_records for bi-monthly payroll
+    const payrollSchema = db.prepare(`SELECT sql FROM sqlite_master WHERE type='table' AND name='payroll_records'`).get() as { sql: string } | undefined
+    if (payrollSchema && !payrollSchema.sql.includes('period')) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS payroll_records_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          employee_id TEXT NOT NULL,
+          year INTEGER NOT NULL,
+          month INTEGER NOT NULL,
+          period INTEGER NOT NULL DEFAULT 1,
+          working_days INTEGER,
+          days_present INTEGER,
+          days_absent INTEGER,
+          days_sick_with_cert INTEGER DEFAULT 0,
+          days_sick_no_cert INTEGER DEFAULT 0,
+          days_half_day INTEGER DEFAULT 0,
+          total_late_minutes INTEGER DEFAULT 0,
+          base_pay REAL NOT NULL DEFAULT 0,
+          diligence_bonus REAL DEFAULT 0,
+          deductions REAL DEFAULT 0,
+          total_pay REAL NOT NULL DEFAULT 0,
+          is_finalized INTEGER DEFAULT 0,
+          notes TEXT,
+          created_by TEXT,
+          created_at TEXT DEFAULT (datetime('now')),
+          UNIQUE(employee_id, year, month, period)
+        );
+        INSERT INTO payroll_records_new
+          (id, employee_id, year, month, period, working_days, days_present, days_absent,
+           days_sick_with_cert, days_sick_no_cert, days_half_day, total_late_minutes,
+           base_pay, diligence_bonus, deductions, total_pay, is_finalized, notes, created_by, created_at)
+        SELECT id, employee_id, year, month, 1, working_days, days_present, days_absent,
+               days_sick_with_cert, days_sick_no_cert, days_half_day, total_late_minutes,
+               base_pay, diligence_bonus, deductions, total_pay, is_finalized, notes, created_by, created_at
+        FROM payroll_records;
+        DROP TABLE payroll_records;
+        ALTER TABLE payroll_records_new RENAME TO payroll_records;
+      `)
+    }
   }
   return db
 }
@@ -194,6 +234,7 @@ function initSchema() {
       employee_id TEXT NOT NULL,
       year INTEGER NOT NULL,
       month INTEGER NOT NULL,
+      period INTEGER NOT NULL DEFAULT 1,
       working_days INTEGER,
       days_present INTEGER,
       days_absent INTEGER,
@@ -209,7 +250,7 @@ function initSchema() {
       notes TEXT,
       created_by TEXT,
       created_at TEXT DEFAULT (datetime('now')),
-      UNIQUE(employee_id, year, month)
+      UNIQUE(employee_id, year, month, period)
     );
 
     -- ระบบบันทึกงานการผลิต
