@@ -580,15 +580,15 @@ export default function PayrollPage() {
                           <span>{formatCurrency(r.base_pay)}</span>
                           {switchedToDaily && canManage && (
                             <button
-                              className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded hover:bg-yellow-200 transition-colors cursor-pointer"
-                              title={`คิดรายวัน: ${formatCurrency(r.base_pay / (r.days_present || 1))}/วัน — คลิกเพื่อตั้งค่าอัตราเอง`}
+                              className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded hover:bg-yellow-200 transition-colors"
+                              title={`คิดรายวัน (ขาด>${paySettings.monthlyMaxAbsent}วัน): ${formatCurrency(r.base_pay / (r.days_present || 1))}/วัน`}
                               onClick={() => { setDailyRateModal({ employeeId: r.employee_id, name: r.name }); setNewDailyRate('') }}
                             >
                               ⚠️ คิดรายวัน
                             </button>
                           )}
                           {switchedToDaily && !canManage && (
-                            <span className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded" title={`คิดรายวัน: ${formatCurrency(r.base_pay / (r.days_present || 1))}/วัน`}>⚠️ คิดรายวัน</span>
+                            <span className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded">⚠️ คิดรายวัน</span>
                           )}
                         </div>
                       </td>

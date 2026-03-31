@@ -204,14 +204,15 @@ export async function POST(req: NextRequest) {
       // รายวัน: คิดตามวันที่ทำงานจริงในรอบนี้ (ครึ่งวัน = 0.5)
       basePay = emp.daily_rate ? Math.max(0, effectiveDays) * emp.daily_rate : 0
     } else if (emp.employment_type === 'monthly') {
-      // รายเดือน: base ของรอบ = เงินเดือน ÷ 2
+      // รายเดือน: ฐาน = เงินเดือน ÷ 2 ต่อรอบ
       const periodBaseSalary = (emp.monthly_salary ?? 0) / 2
       if (realAbsent > (ps.monthly_max_absent ?? 3.5)) {
-        // ขาดเกิน 3.5 วันในรอบนี้ → คิดเป็นรายวัน (อิงจากเงินเดือนเต็ม ÷ วันทำงานทั้งเดือน)
+        // ขาด/ลาเกิน 3.5 วันในรอบนี้ → เปลี่ยนเป็นคิดรายวัน
+        // อัตรารายวัน = เงินเดือนเต็ม ÷ วันทำงานทั้งหมดในเดือน (ไม่ใช่ ÷ 2)
         const dailyRateFromSalary = (emp.monthly_salary ?? 0) / totalWorkingDaysInMonth
         basePay = Math.max(0, effectiveDays) * dailyRateFromSalary
       } else {
-        // ขาดไม่เกิน 3.5 วัน → ได้ครึ่งเงินเดือนเต็ม
+        // ขาด/ลาไม่เกิน 3.5 วัน → ได้เงินเดือนครึ่งรอบ
         basePay = periodBaseSalary
       }
     }
