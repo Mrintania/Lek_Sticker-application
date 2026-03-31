@@ -176,7 +176,7 @@ export default function PayrollPage() {
   async function loadPayroll() {
     const [payrollRes, prodRes] = await Promise.all([
       fetch(`/api/payroll?year=${year}&month=${month}&period=${period}`),
-      fetch(`/api/production/summary?year=${year}&month=${month}`),
+      fetch(`/api/production/summary?year=${year}&month=${month}&period=${period}`),
     ])
     if (payrollRes.ok) {
       setRecords(await payrollRes.json())

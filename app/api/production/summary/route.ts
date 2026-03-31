@@ -9,14 +9,26 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const year = searchParams.get('year')
   const month = searchParams.get('month')
+  const period = searchParams.get('period') // '1' = days 1–15, '2' = days 16–end
   const dateFrom = searchParams.get('date_from')
   const dateTo = searchParams.get('date_to')
 
   let from: string
   let to: string
   if (year && month) {
-    from = `${year}-${String(month).padStart(2, '0')}-01`
-    to = `${year}-${String(month).padStart(2, '0')}-31`
+    const mm = String(month).padStart(2, '0')
+    if (period === '2') {
+      const lastDay = new Date(Number(year), Number(month), 0).getDate()
+      from = `${year}-${mm}-16`
+      to = `${year}-${mm}-${String(lastDay).padStart(2, '0')}`
+    } else if (period === '1') {
+      from = `${year}-${mm}-01`
+      to = `${year}-${mm}-15`
+    } else {
+      // ไม่ระบุ period → ทั้งเดือน
+      from = `${year}-${mm}-01`
+      to = `${year}-${mm}-31`
+    }
   } else if (dateFrom && dateTo) {
     from = dateFrom
     to = dateTo
