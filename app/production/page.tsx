@@ -410,7 +410,7 @@ export default function ProductionPage() {
                   {/* ── Assignment Section ── */}
                   <div className="px-4 py-3">
                     <div className="flex items-center justify-between mb-2.5">
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">👥 พนักงาน</p>
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">พนักงาน</p>
                       <button
                         onClick={() => saveAssignment(machine.id)}
                         disabled={savingAssignment === machine.id}
@@ -460,7 +460,7 @@ export default function ProductionPage() {
 
                   {/* ── Production Items ── */}
                   <div className="px-4 py-3">
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2.5">📦 รายการผลงาน</p>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2.5">รายการผลงาน</p>
 
                     {/* Column headers */}
                     {items.some(i => i.model_name || i.quantity) && (
@@ -514,7 +514,7 @@ export default function ProductionPage() {
 
                   {/* ── Notes ── */}
                   <div className="px-4 py-3">
-                    <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">📝 หมายเหตุ</label>
+                    <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">หมายเหตุ</label>
                     <input
                       type="text"
                       placeholder="หมายเหตุเพิ่มเติม (ถ้ามี)"
@@ -525,7 +525,7 @@ export default function ProductionPage() {
                   </div>
 
                   {/* ── Save Footer ── */}
-                  <div className="px-4 py-3 bg-gray-50/60 flex items-center justify-between gap-3">
+                  <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       {totalQty > 0 && (
                         <p className="text-sm font-bold text-teal-700">รวม {totalQty.toLocaleString()} ชิ้น</p>
@@ -539,11 +539,7 @@ export default function ProductionPage() {
                     <button
                       onClick={() => saveRecord(machine.id)}
                       disabled={savingRecord === machine.id}
-                      className={`flex-shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                        isSaved
-                          ? 'bg-teal-500 hover:bg-teal-600 text-white shadow-sm shadow-teal-200'
-                          : 'bg-gray-800 hover:bg-gray-900 text-white shadow-sm'
-                      } disabled:opacity-60`}
+                      className="btn-primary flex-shrink-0 flex items-center gap-2 !py-2 !px-5 disabled:opacity-60"
                     >
                       {savingRecord === machine.id ? (
                         <>
@@ -554,13 +550,7 @@ export default function ProductionPage() {
                           กำลังบันทึก...
                         </>
                       ) : (
-                        <>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                              d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                          </svg>
-                          {isSaved ? 'อัปเดตงาน' : 'บันทึกงาน'}
-                        </>
+                        isSaved ? 'อัปเดตงาน' : '💾 บันทึกงาน'
                       )}
                     </button>
                   </div>
