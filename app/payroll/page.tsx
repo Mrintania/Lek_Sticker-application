@@ -42,7 +42,7 @@ interface PayrollSettings {
   diligenceMaxDays: number
 }
 
-type SortKey = 'name' | 'employmentType' | 'workingDays' | 'daysPresent' | 'daysAbsent' | 'daysSickCert' | 'daysSickNoCert' | 'daysHalfDay' | 'basePay' | 'diligenceBonus' | 'totalPay'
+type SortKey = 'name' | 'employmentType' | 'workingDays' | 'daysPresent' | 'daysAbsent' | 'daysSickCert' | 'daysSickNoCert' | 'daysHalfDay' | 'production' | 'basePay' | 'diligenceBonus' | 'totalPay'
 
 export default function PayrollPage() {
   const { user } = useCurrentUser()
@@ -57,6 +57,7 @@ export default function PayrollPage() {
     diligenceStepAmount: 150,
     diligenceMaxDays: 3,
   })
+  const [productionByEmployee, setProductionByEmployee] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(false)
   const [noDataWarning, setNoDataWarning] = useState('')
   const [showSettings, setShowSettings] = useState(false)
@@ -118,10 +119,19 @@ export default function PayrollPage() {
   }, [year, month])
 
   async function loadPayroll() {
-    const res = await fetch(`/api/payroll?year=${year}&month=${month}`)
-    if (res.ok) {
-      setRecords(await res.json())
+    const [payrollRes, prodRes] = await Promise.all([
+      fetch(`/api/payroll?year=${year}&month=${month}`),
+      fetch(`/api/production/summary?year=${year}&month=${month}`),
+    ])
+    if (payrollRes.ok) {
+      setRecords(await payrollRes.json())
       setRefreshedAt(new Date())
+    }
+    if (prodRes.ok) {
+      const prodData = await prodRes.json()
+      const map: Record<string, number> = {}
+      for (const e of prodData.byEmployee ?? []) map[e.employee_id] = e.total_quantity
+      setProductionByEmployee(map)
     }
   }
 
@@ -199,6 +209,7 @@ export default function PayrollPage() {
       case 'daysSickCert': aVal = a.days_sick_with_cert; bVal = b.days_sick_with_cert; break
       case 'daysSickNoCert': aVal = a.days_sick_no_cert; bVal = b.days_sick_no_cert; break
       case 'daysHalfDay': aVal = a.days_half_day; bVal = b.days_half_day; break
+      case 'production': aVal = productionByEmployee[a.employee_id] ?? 0; bVal = productionByEmployee[b.employee_id] ?? 0; break
       case 'basePay': aVal = a.base_pay; bVal = b.base_pay; break
       case 'diligenceBonus': aVal = a.diligence_bonus; bVal = b.diligence_bonus; break
       case 'totalPay': aVal = a.total_pay; bVal = b.total_pay; break
@@ -332,34 +343,25 @@ export default function PayrollPage() {
                 <p className="text-sm font-semibold text-gray-700">เกณฑ์เบี้ยขยัน <span className="font-normal text-gray-400">(รายเดือนเท่านั้น)</span></p>
 
                 {/* 3 config fields */}
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="p-3 rounded-xl border border-gray-100 bg-gray-50 text-center">
-                    <p className="text-xs text-gray-500 mb-1.5">บาทเมื่อไม่หยุด</p>
-                    <input
-                      type="number" min={0} step={50}
-                      className="w-full text-center font-semibold text-sm"
-                      value={paySettings.diligenceBaseAmount}
-                      onChange={(e) => setPaySettings({ ...paySettings, diligenceBaseAmount: Number(e.target.value) })}
-                    />
-                  </div>
-                  <div className="p-3 rounded-xl border border-gray-100 bg-gray-50 text-center">
-                    <p className="text-xs text-gray-500 mb-1.5">ลดต่อ 0.5 วัน</p>
-                    <input
-                      type="number" min={0} step={50}
-                      className="w-full text-center font-semibold text-sm"
-                      value={paySettings.diligenceStepAmount}
-                      onChange={(e) => setPaySettings({ ...paySettings, diligenceStepAmount: Number(e.target.value) })}
-                    />
-                  </div>
-                  <div className="p-3 rounded-xl border border-gray-100 bg-gray-50 text-center">
-                    <p className="text-xs text-gray-500 mb-1.5">หยุดได้สูงสุด (วัน)</p>
-                    <input
-                      type="number" min={0} step={0.5}
-                      className="w-full text-center font-semibold text-sm"
-                      value={paySettings.diligenceMaxDays}
-                      onChange={(e) => setPaySettings({ ...paySettings, diligenceMaxDays: Number(e.target.value) })}
-                    />
-                  </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {([
+                    { label: 'บาทเมื่อไม่หยุด', key: 'diligenceBaseAmount' as const, step: 50 },
+                    { label: 'ลดต่อ 0.5 วัน', key: 'diligenceStepAmount' as const, step: 50 },
+                    { label: 'หยุดได้สูงสุด (วัน)', key: 'diligenceMaxDays' as const, step: 0.5 },
+                  ]).map(({ label, key, step }) => (
+                    <div key={key} className="min-w-0 p-2 rounded-xl border border-gray-100 bg-gray-50 text-center">
+                      <p className="text-xs text-gray-500 mb-1.5 leading-tight truncate">{label}</p>
+                      <input
+                        type="text" inputMode="decimal"
+                        className="w-full min-w-0 block text-center font-semibold text-sm"
+                        value={paySettings[key]}
+                        onChange={(e) => {
+                          const v = Number(e.target.value)
+                          if (!isNaN(v)) setPaySettings({ ...paySettings, [key]: v })
+                        }}
+                      />
+                    </div>
+                  ))}
                 </div>
 
                 {/* Preview table — computed from inputs */}
@@ -410,11 +412,13 @@ export default function PayrollPage() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <input
-                      type="number"
-                      className="w-16 text-center"
-                      min={0} step={0.5}
+                      type="text" inputMode="decimal"
+                      className="w-14 text-center"
                       value={paySettings.monthlyMaxAbsent}
-                      onChange={(e) => setPaySettings({ ...paySettings, monthlyMaxAbsent: Number(e.target.value) })}
+                      onChange={(e) => {
+                        const v = Number(e.target.value)
+                        if (!isNaN(v)) setPaySettings({ ...paySettings, monthlyMaxAbsent: v })
+                      }}
                     />
                     <span className="text-sm text-gray-500">วัน</span>
                   </div>
@@ -460,7 +464,7 @@ export default function PayrollPage() {
 
       {/* Summary Cards */}
       {records.length > 0 && (
-        <div className="grid grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div className="card text-center !py-3 sm:!py-4">
             <p className="text-lg sm:text-2xl font-bold text-blue-700">{formatCurrency(totals.basePay)}</p>
             <p className="text-xs sm:text-sm text-gray-500 mt-1">เงินเดือน</p>
@@ -472,6 +476,12 @@ export default function PayrollPage() {
           <div className="card text-center !py-3 sm:!py-4">
             <p className="text-lg sm:text-2xl font-bold text-purple-700">{formatCurrency(totals.totalPay)}</p>
             <p className="text-xs sm:text-sm text-gray-500 mt-1">รวมทั้งหมด</p>
+          </div>
+          <div className="card text-center !py-3 sm:!py-4">
+            <p className="text-lg sm:text-2xl font-bold text-teal-700">
+              {Object.values(productionByEmployee).reduce((s, v) => s + v, 0).toLocaleString()}
+            </p>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">ผลงานรวม (ชิ้น)</p>
           </div>
         </div>
       )}
@@ -496,6 +506,7 @@ export default function PayrollPage() {
                   { key: 'daysSickCert', label: 'ลาป่วย(ใบ)', cls: 'text-center' },
                   { key: 'daysSickNoCert', label: 'ลาทั้งวัน', cls: 'text-center' },
                   { key: 'daysHalfDay', label: 'ครึ่งวัน', cls: 'text-center' },
+                  { key: 'production', label: 'ผลงาน (ชิ้น)', cls: 'text-right' },
                   { key: 'basePay', label: 'เงินเดือน', cls: 'text-right' },
                   { key: 'diligenceBonus', label: 'เบี้ยขยัน', cls: 'text-right' },
                   { key: 'totalPay', label: 'รวม', cls: 'text-right' },
@@ -540,6 +551,11 @@ export default function PayrollPage() {
                         <span className={r.days_half_day > 0 ? 'text-yellow-600 font-medium' : 'text-gray-400'}>{r.days_half_day || '—'}</span>
                       </td>
                       <td className="table-cell text-right">
+                        {productionByEmployee[r.employee_id]
+                          ? <span className="text-teal-700 font-medium">{productionByEmployee[r.employee_id].toLocaleString()}</span>
+                          : <span className="text-gray-300">—</span>}
+                      </td>
+                      <td className="table-cell text-right">
                         <div className="flex items-center justify-end gap-1">
                           <span>{formatCurrency(r.base_pay)}</span>
                           {switchedToDaily && canManage && (
@@ -566,7 +582,7 @@ export default function PayrollPage() {
                   )
                 })}
                 <tr className="bg-gray-50 font-semibold">
-                  <td className="table-cell" colSpan={8}>รวมทั้งหมด</td>
+                  <td className="table-cell" colSpan={9}>รวมทั้งหมด</td>
                   <td className="table-cell text-right text-blue-700">{formatCurrency(totals.basePay)}</td>
                   <td className="table-cell text-right text-green-700">{formatCurrency(totals.bonus)}</td>
                   <td className="table-cell text-right text-purple-700">{formatCurrency(totals.totalPay)}</td>
@@ -665,6 +681,20 @@ export default function PayrollPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Production section */}
+              {detailRecord && productionByEmployee[detailRecord.employee_id] != null && (
+                <div className="px-6 pb-4">
+                  <div className="bg-teal-50 rounded-xl p-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-semibold text-teal-600 uppercase tracking-wide">📦 ผลงานเดือนนี้</p>
+                      <p className="text-2xl font-bold text-teal-700 mt-1">
+                        {(productionByEmployee[detailRecord.employee_id] ?? 0).toLocaleString()} ชิ้น
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Daily attendance table */}
               <div className="px-6 pb-6">

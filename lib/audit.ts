@@ -24,6 +24,16 @@ export type AuditAction =
   | 'holiday.create'
   | 'holiday.update'
   | 'holiday.delete'
+  | 'machine.create'
+  | 'machine.update'
+  | 'machine.deactivate'
+  | 'machine.assign'
+  | 'production.record'
+  | 'production.update'
+  | 'production.delete'
+  | 'evaluation.create'
+  | 'evaluation.update'
+  | 'evaluation.approve'
 
 export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   'auth.login': 'เข้าสู่ระบบ',
@@ -49,6 +59,16 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   'holiday.create': 'เพิ่มวันหยุด',
   'holiday.update': 'แก้ไขวันหยุด',
   'holiday.delete': 'ลบวันหยุด',
+  'machine.create': 'เพิ่มแท่นพิมพ์',
+  'machine.update': 'แก้ไขแท่นพิมพ์',
+  'machine.deactivate': 'ปิดใช้งานแท่นพิมพ์',
+  'machine.assign': 'มอบหมายพนักงานให้แท่นพิมพ์',
+  'production.record': 'บันทึกงานผลิต',
+  'production.update': 'แก้ไขงานผลิต',
+  'production.delete': 'ลบงานผลิต',
+  'evaluation.create': 'สร้างการประเมิน',
+  'evaluation.update': 'แก้ไขการประเมิน',
+  'evaluation.approve': 'อนุมัติการประเมิน',
 }
 
 export const AUDIT_ACTION_COLORS: Record<AuditAction, string> = {
@@ -75,6 +95,16 @@ export const AUDIT_ACTION_COLORS: Record<AuditAction, string> = {
   'holiday.create': 'bg-teal-100 text-teal-700',
   'holiday.update': 'bg-yellow-100 text-yellow-700',
   'holiday.delete': 'bg-red-100 text-red-700',
+  'machine.create': 'bg-cyan-100 text-cyan-700',
+  'machine.update': 'bg-cyan-100 text-cyan-700',
+  'machine.deactivate': 'bg-cyan-100 text-cyan-700',
+  'machine.assign': 'bg-cyan-100 text-cyan-700',
+  'production.record': 'bg-teal-100 text-teal-700',
+  'production.update': 'bg-teal-100 text-teal-700',
+  'production.delete': 'bg-red-100 text-red-700',
+  'evaluation.create': 'bg-violet-100 text-violet-700',
+  'evaluation.update': 'bg-violet-100 text-violet-700',
+  'evaluation.approve': 'bg-violet-100 text-violet-700',
 }
 
 export function logAudit(

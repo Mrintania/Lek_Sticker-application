@@ -41,6 +41,11 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL('/login', req.url))
   }
 
+  // Redirect root to personal dashboard for user role
+  if (pathname === '/' && payload.role === 'user') {
+    return NextResponse.redirect(new URL('/me', req.url))
+  }
+
   // Admin-only routes: /admin/* and /api/users
   if (pathname.startsWith('/admin') || pathname.startsWith('/api/users')) {
     if (payload.role !== 'admin') {

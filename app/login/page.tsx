@@ -25,7 +25,7 @@ export default function LoginPage() {
         return
       }
       clearUserCache()
-      window.location.href = '/dashboard'
+      window.location.href = '/'
     } catch {
       setError('เกิดข้อผิดพลาด กรุณาลองอีกครั้ง')
     } finally {
