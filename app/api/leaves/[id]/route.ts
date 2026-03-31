@@ -3,7 +3,8 @@ import { getDb } from '@/lib/db'
 import { getUserFromRequest, canManage } from '@/lib/auth'
 import { logAudit, getIp } from '@/lib/audit'
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const user = getUserFromRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -11,7 +12,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const { action, rejectReason } = body
   const db = getDb()
 
-  const leave = db.prepare('SELECT * FROM leaves WHERE id = ? AND deleted_at IS NULL').get(params.id) as {
+  const leave = db.prepare('SELECT * FROM leaves WHERE id = ? AND deleted_at IS NULL').get(id) as {
     id: number; employee_id: string; leave_type: string; date: string; has_medical_cert: number; status: string
   } | undefined
 
@@ -31,7 +32,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   if (action === 'approve') {
     db.prepare(`UPDATE leaves SET status = 'approved', approved_by = ?, approved_at = datetime('now') WHERE id = ?`
-    ).run(user.username, params.id)
+    ).run(user.username, id)
 
     // Auto-create attendance override
     const overrideStatus =
@@ -49,22 +50,39 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         updated_at = datetime('now')`
     ).run(leave.employee_id, leave.date, overrideStatus, leave.id, 'อนุมัติใบลา', user.username)
 
-    logAudit(db, user.username, 'leave.approve', 'leave', params.id, {
+    logAudit(db, user.username, 'leave.approve', 'leave', id, {
       employeeId: leave.employee_id, date: leave.date, leaveType: leave.leave_type,
     }, getIp(req))
 
   } else if (action === 'reject') {
     db.prepare(`UPDATE leaves SET status = 'rejected', reject_reason = ?, approved_by = ? WHERE id = ?`
-    ).run(rejectReason || null, user.username, params.id)
+    ).run(rejectReason || null, user.username, id)
 
-    logAudit(db, user.username, 'leave.reject', 'leave', params.id, {
+    logAudit(db, user.username, 'leave.reject', 'leave', id, {
       employeeId: leave.employee_id, date: leave.date, rejectReason: rejectReason || null,
     }, getIp(req))
 
   } else if (action === 'edit') {
     const { leaveType, date, hasMedicalCert, reason } = body
+
+    // ห้าม user ลาย้อนหลัง
+    if (user.role === 'user') {
+      const now = new Date()
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+      if (date < todayStr) {
+        return NextResponse.json({ error: 'ไม่สามารถลาย้อนหลังได้ กรุณาเลือกวันที่ตั้งแต่วันนี้เป็นต้นไป' }, { status: 400 })
+      }
+      // ลาครึ่งวันบ่าย ต้องขอก่อน 13.00 น.
+      if (date === todayStr && leaveType === 'half_afternoon') {
+        const currentMinutes = now.getHours() * 60 + now.getMinutes()
+        if (currentMinutes >= 13 * 60) {
+          return NextResponse.json({ error: 'ลาครึ่งวันบ่ายต้องขอก่อน 13.00 น. ไม่สามารถทำรายการได้' }, { status: 400 })
+        }
+      }
+    }
+
     db.prepare(`UPDATE leaves SET leave_type = ?, date = ?, has_medical_cert = ?, reason = ? WHERE id = ?`)
-      .run(leaveType, date, hasMedicalCert ? 1 : 0, reason || null, params.id)
+      .run(leaveType, date, hasMedicalCert ? 1 : 0, reason || null, id)
 
     // If leave was already approved, update the attendance override as well
     if (leave.status === 'approved') {
@@ -89,7 +107,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       }
     }
 
-    logAudit(db, user.username, 'leave.edit', 'leave', params.id, {
+    logAudit(db, user.username, 'leave.edit', 'leave', id, {
       employeeId: leave.employee_id, oldDate: leave.date, newDate: date, leaveType,
     }, getIp(req))
   }
@@ -97,12 +115,13 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   return NextResponse.json({ success: true })
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const user = getUserFromRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const db = getDb()
-  const leave = db.prepare('SELECT * FROM leaves WHERE id = ? AND deleted_at IS NULL').get(params.id) as {
+  const leave = db.prepare('SELECT * FROM leaves WHERE id = ? AND deleted_at IS NULL').get(id) as {
     id: number; employee_id: string; date: string; status: string
   } | undefined
   if (!leave) return NextResponse.json({ error: 'ไม่พบใบลา' }, { status: 404 })
@@ -114,13 +133,13 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
   // Remove the attendance override linked to this leave (regardless of status)
   // This also catches any orphan overrides in case leave was previously hard-deleted then re-created
-  db.prepare('DELETE FROM attendance_overrides WHERE leave_id = ?').run(params.id)
+  db.prepare('DELETE FROM attendance_overrides WHERE leave_id = ?').run(id)
 
   // Soft delete — keep the row for audit history
   db.prepare(`UPDATE leaves SET deleted_at = datetime('now'), deleted_by = ? WHERE id = ?`)
-    .run(user.username, params.id)
+    .run(user.username, id)
 
-  logAudit(db, user.username, 'leave.delete', 'leave', params.id, {
+  logAudit(db, user.username, 'leave.delete', 'leave', id, {
     employeeId: leave.employee_id, date: leave.date, wasApproved: leave.status === 'approved',
   }, getIp(req))
 

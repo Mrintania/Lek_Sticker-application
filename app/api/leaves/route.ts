@@ -54,20 +54,33 @@ export async function POST(req: NextRequest) {
 
   const db = getDb()
 
-  // ── ห้ามขอลาในวันที่เริ่มงานไปแล้ว ──────────────────────────────────────
+  // ── ตรวจสอบวันที่ ──────────────────────────────────────────────────────
   const now = new Date()
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  const currentMinutes = now.getHours() * 60 + now.getMinutes()
+
+  // ห้ามลาย้อนหลัง (user เท่านั้น — admin/manager ยังแก้ย้อนหลังได้)
+  if (user.role === 'user' && date < todayStr) {
+    return NextResponse.json({ error: 'ไม่สามารถลาย้อนหลังได้ กรุณาเลือกวันที่ตั้งแต่วันนี้เป็นต้นไป' }, { status: 400 })
+  }
 
   if (date === todayStr) {
-    const ws = db.prepare('SELECT work_start_time FROM work_settings WHERE id = 1').get() as { work_start_time: string } | undefined
-    if (ws?.work_start_time) {
-      const [startHour, startMin] = ws.work_start_time.split(':').map(Number)
-      const workStartMinutes = startHour * 60 + startMin
-      const currentMinutes = now.getHours() * 60 + now.getMinutes()
-      if (currentMinutes > workStartMinutes) {
-        return NextResponse.json({
-          error: `ไม่สามารถขอลาในวันนี้ได้ เนื่องจากเวลาทำงานเริ่มแล้ว (${ws.work_start_time} น.)`,
-        }, { status: 400 })
+    // ลาครึ่งวันบ่าย ต้องขอก่อน 13.00 น.
+    if (leaveType === 'half_afternoon' && currentMinutes >= 13 * 60) {
+      return NextResponse.json({ error: 'ลาครึ่งวันบ่ายต้องขอก่อน 13.00 น. ไม่สามารถทำรายการได้' }, { status: 400 })
+    }
+
+    // ห้ามขอลาในวันที่เริ่มงานไปแล้ว (ยกเว้นลาป่วย)
+    if (leaveType !== 'sick') {
+      const ws = db.prepare('SELECT work_start_time FROM work_settings WHERE id = 1').get() as { work_start_time: string } | undefined
+      if (ws?.work_start_time) {
+        const [startHour, startMin] = ws.work_start_time.split(':').map(Number)
+        const workStartMinutes = startHour * 60 + startMin
+        if (currentMinutes > workStartMinutes) {
+          return NextResponse.json({
+            error: `ไม่สามารถขอลาในวันนี้ได้ เนื่องจากเวลาทำงานเริ่มแล้ว (${ws.work_start_time} น.)`,
+          }, { status: 400 })
+        }
       }
     }
   }
