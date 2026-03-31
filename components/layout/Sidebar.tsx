@@ -60,7 +60,7 @@ export default function Sidebar() {
   }, [pathname])
 
   useEffect(() => {
-    if (REPORT_PATHS.includes(pathname)) {
+    if (pathname && REPORT_PATHS.includes(pathname)) {
       setReportsOpen(true)
     }
   }, [pathname])
@@ -88,7 +88,7 @@ export default function Sidebar() {
 
   const visibleTop = topItems.filter(isVisible)
   const visibleBottom = bottomItems.filter(isVisible)
-  const isReportActive = REPORT_PATHS.includes(pathname)
+  const isReportActive = pathname != null && REPORT_PATHS.includes(pathname)
 
   return (
     <>
@@ -318,7 +318,7 @@ function NavLink({
   badge,
 }: {
   item: NavItem
-  pathname: string
+  pathname: string | null
   collapsed: boolean
   sub?: boolean
   badge?: number

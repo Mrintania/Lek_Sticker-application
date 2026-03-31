@@ -10,8 +10,8 @@ function decodeJwtPayload(token: string): { role?: string } | null {
   } catch { return null }
 }
 
-export default function HomePage() {
-  const cookieStore = cookies()
+export default async function HomePage() {
+  const cookieStore = await cookies()
   const token = cookieStore.get('att_token')?.value
   const payload = token ? decodeJwtPayload(token) : null
   if (payload?.role === 'user') redirect('/me')
