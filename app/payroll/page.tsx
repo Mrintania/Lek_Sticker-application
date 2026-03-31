@@ -114,12 +114,15 @@ export default function PayrollPage() {
           const holidaySet = new Set(hol.filter(h => h.is_active).map(h => h.date))
 
           // สร้าง list วันทำงานในรอบนี้
+          // หมายเหตุ: workDays ในระบบใช้ encoding 0=จันทร์…5=เสาร์ 6=อาทิตย์
+          // ต่างจาก JS getDay() ที่ 0=อาทิตย์…6=เสาร์ → ต้องแปลงก่อนเทียบ
           const workingDates: string[] = []
           for (let d = 1; d <= lastDay; d++) {
             const dateStr = `${r.year}-${mm}-${String(d).padStart(2, '0')}`
             if (dateStr < periodStart || dateStr > periodEnd) continue
-            const dow = new Date(r.year, r.month - 1, d).getDay()
-            if (!ws.workDays.includes(dow)) continue
+            const jsDay = new Date(r.year, r.month - 1, d).getDay()
+            const ourDow = jsDay === 0 ? 6 : jsDay - 1  // แปลง JS→ encoding ระบบ
+            if (!ws.workDays.includes(ourDow)) continue
             if (holidaySet.has(dateStr)) continue
             workingDates.push(dateStr)
           }
