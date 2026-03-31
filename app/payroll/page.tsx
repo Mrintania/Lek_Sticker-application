@@ -78,23 +78,73 @@ export default function PayrollPage() {
   // Employee detail modal
   const [detailRecord, setDetailRecord] = useState<PayrollRecord | null>(null)
   const [detailAttendance, setDetailAttendance] = useState<AttendanceRecord[]>([])
+  const [detailAbsentDates, setDetailAbsentDates] = useState<{ date: string; type: string }[]>([])
   const [loadingDetail, setLoadingDetail] = useState(false)
 
   async function openDetail(r: PayrollRecord) {
     setDetailRecord(r)
     setDetailAttendance([])
+    setDetailAbsentDates([])
     setLoadingDetail(true)
     try {
-      const startDate = `${r.year}-${String(r.month).padStart(2, '0')}-01`
-      const endDate = `${r.year}-${String(r.month).padStart(2, '0')}-31`
-      const res = await fetch(`/api/attendance?start=${startDate}&end=${endDate}&employeeId=${r.employee_id}`)
-      if (res.ok) {
-        const data = await res.json()
-        setDetailAttendance(data.map((rec: AttendanceRecord & { checkIn: string | null; checkOut: string | null }) => ({
+      const mm = String(r.month).padStart(2, '0')
+      const lastDay = new Date(r.year, r.month, 0).getDate()
+      const periodNum = r.period ?? 1
+      const periodStart = periodNum === 1 ? `${r.year}-${mm}-01` : `${r.year}-${mm}-16`
+      const periodEnd   = periodNum === 1 ? `${r.year}-${mm}-15` : `${r.year}-${mm}-${String(lastDay).padStart(2, '0')}`
+
+      const [attRes, wsRes, holRes] = await Promise.all([
+        fetch(`/api/attendance?start=${periodStart}&end=${periodEnd}&employeeId=${r.employee_id}`),
+        fetch(`/api/settings`),
+        fetch(`/api/holidays?year=${r.year}`),
+      ])
+
+      if (attRes.ok) {
+        const data: (AttendanceRecord & { checkIn: string | null; checkOut: string | null })[] = await attRes.json()
+        setDetailAttendance(data.map((rec) => ({
           ...rec,
-          checkIn: rec.checkIn ? new Date(rec.checkIn) : null,
+          checkIn:  rec.checkIn  ? new Date(rec.checkIn)  : null,
           checkOut: rec.checkOut ? new Date(rec.checkOut) : null,
         })))
+
+        // ── คำนวณวันที่ขาดงาน ─────────────────────────────────────────────
+        if (wsRes.ok && holRes.ok) {
+          const ws  = await wsRes.json() as { workDays: number[] }
+          const hol = await holRes.json() as { date: string; is_active: number }[]
+          const holidaySet = new Set(hol.filter(h => h.is_active).map(h => h.date))
+
+          // สร้าง list วันทำงานในรอบนี้
+          const workingDates: string[] = []
+          for (let d = 1; d <= lastDay; d++) {
+            const dateStr = `${r.year}-${mm}-${String(d).padStart(2, '0')}`
+            if (dateStr < periodStart || dateStr > periodEnd) continue
+            const dow = new Date(r.year, r.month - 1, d).getDay()
+            if (!ws.workDays.includes(dow)) continue
+            if (holidaySet.has(dateStr)) continue
+            workingDates.push(dateStr)
+          }
+
+          // วันที่มาทำงาน = มีข้อมูลการสแกน/ลา และไม่ใช่ absent-type
+          const ABSENT_STATUSES = new Set(['absent', 'leave_sick', 'leave_full_day'])
+          // map date → status ของ absent-type leaves (มีบันทึกการลา)
+          const leaveAbsentMap = new Map<string, string>(
+            data
+              .filter(rec => rec.status === 'leave_sick' || rec.status === 'leave_full_day')
+              .map(rec => [rec.date, rec.status] as [string, string])
+          )
+          const presentDates = new Set<string>(
+            data.filter(rec => !ABSENT_STATUSES.has(rec.status)).map(rec => rec.date)
+          )
+
+          // วันขาด = วันทำงานที่ไม่อยู่ใน presentDates
+          const absentDates = workingDates
+            .filter(d => !presentDates.has(d))
+            .map(d => ({
+              date: d,
+              type: leaveAbsentMap.get(d) ?? 'absent', // 'absent' | 'leave_sick' | 'leave_full_day'
+            }))
+          setDetailAbsentDates(absentDates)
+        }
       }
     } finally {
       setLoadingDetail(false)
@@ -701,6 +751,42 @@ export default function PayrollPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Absent dates section */}
+              {detailAbsentDates.length > 0 && (
+                <div className="px-6 pb-4">
+                  <div className="bg-red-50 border border-red-100 rounded-xl p-4">
+                    <p className="text-xs font-semibold text-red-600 uppercase tracking-wide mb-2.5">
+                      🚫 วันที่ขาดงาน ({detailAbsentDates.length} วัน)
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {detailAbsentDates.map(({ date, type }) => (
+                        <span
+                          key={date}
+                          className={`text-xs px-2.5 py-1 rounded-md font-medium ${
+                            type === 'leave_full_day' || type === 'leave_sick'
+                              ? 'bg-orange-100 text-orange-700'
+                              : 'bg-red-100 text-red-700'
+                          }`}
+                          title={
+                            type === 'leave_full_day' ? 'ลาทั้งวัน (ไม่ได้รับค่าจ้าง)'
+                            : type === 'leave_sick'    ? 'ลาป่วย (ไม่มีใบแพทย์)'
+                            : 'ขาดงาน'
+                          }
+                        >
+                          {formatThaiDateShort(date)}
+                          {(type === 'leave_full_day' || type === 'leave_sick') && (
+                            <span className="ml-1 opacity-60 text-[10px]">ลา</span>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-red-400 mt-2">
+                      🔴 แดง = ขาดงาน &nbsp;|&nbsp; 🟠 ส้ม = ลาไม่มีใบแพทย์ (นับเป็นวันขาด)
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Production section */}
               {detailRecord && productionByEmployee[detailRecord.employee_id] != null && (
