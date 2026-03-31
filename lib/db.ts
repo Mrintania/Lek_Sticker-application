@@ -33,6 +33,11 @@ export function getDb(): Database.Database {
       `CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_logs(action)`,
       `CREATE INDEX IF NOT EXISTS idx_audit_actor ON audit_logs(actor)`,
       `CREATE INDEX IF NOT EXISTS idx_audit_created_at ON audit_logs(created_at)`,
+      // Production tracking indexes
+      `CREATE INDEX IF NOT EXISTS idx_machine_assignments_date ON machine_assignments(date)`,
+      `CREATE INDEX IF NOT EXISTS idx_machine_assignments_employee ON machine_assignments(employee_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_production_records_date ON production_records(date)`,
+      `CREATE INDEX IF NOT EXISTS idx_production_items_record ON production_items(record_id)`,
     ]
     for (const sql of migrations) {
       try { db.exec(sql) } catch {}
@@ -205,6 +210,68 @@ function initSchema() {
       created_by TEXT,
       created_at TEXT DEFAULT (datetime('now')),
       UNIQUE(employee_id, year, month)
+    );
+
+    -- ระบบบันทึกงานการผลิต
+    CREATE TABLE IF NOT EXISTS print_machines (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      code        TEXT NOT NULL UNIQUE,
+      name        TEXT NOT NULL,
+      description TEXT,
+      is_active   INTEGER NOT NULL DEFAULT 1,
+      created_by  TEXT,
+      created_at  TEXT DEFAULT (datetime('now')),
+      updated_at  TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS machine_assignments (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      machine_id  INTEGER NOT NULL REFERENCES print_machines(id),
+      date        TEXT NOT NULL,
+      employee_id TEXT NOT NULL REFERENCES employees(employee_id),
+      slot        INTEGER NOT NULL DEFAULT 1 CHECK(slot IN (1,2)),
+      created_by  TEXT,
+      created_at  TEXT DEFAULT (datetime('now')),
+      UNIQUE(machine_id, date, slot)
+    );
+
+    CREATE TABLE IF NOT EXISTS production_records (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      machine_id  INTEGER NOT NULL REFERENCES print_machines(id),
+      date        TEXT NOT NULL,
+      notes       TEXT,
+      created_by  TEXT,
+      created_at  TEXT DEFAULT (datetime('now')),
+      updated_at  TEXT DEFAULT (datetime('now')),
+      UNIQUE(machine_id, date)
+    );
+
+    CREATE TABLE IF NOT EXISTS production_items (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      record_id   INTEGER NOT NULL REFERENCES production_records(id) ON DELETE CASCADE,
+      model_name  TEXT NOT NULL,
+      quantity    INTEGER NOT NULL CHECK(quantity > 0),
+      sort_order  INTEGER DEFAULT 0,
+      created_at  TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS performance_evaluations (
+      id                INTEGER PRIMARY KEY AUTOINCREMENT,
+      employee_id       TEXT NOT NULL REFERENCES employees(employee_id),
+      period_start      TEXT NOT NULL,
+      period_end        TEXT NOT NULL,
+      evaluator         TEXT NOT NULL,
+      score_attendance  REAL,
+      score_production  REAL,
+      score_behavior    REAL,
+      notes             TEXT,
+      raise_amount      REAL,
+      status            TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft','submitted','approved')),
+      approved_by       TEXT,
+      approved_at       TEXT,
+      created_at        TEXT DEFAULT (datetime('now')),
+      updated_at        TEXT DEFAULT (datetime('now')),
+      UNIQUE(employee_id, period_start, period_end)
     );
   `)
 

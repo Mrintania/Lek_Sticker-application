@@ -27,12 +27,16 @@ const reportItems: NavItem[] = [
 const REPORT_PATHS = reportItems.map((i) => i.href)
 
 const topItems: NavItem[] = [
-  { href: '/dashboard', label: 'ภาพรวม', icon: '📊' },
+  { href: '/me', label: 'หน้าของฉัน', icon: '🏠', roles: ['user'] },
+  { href: '/dashboard', label: 'ภาพรวม', icon: '📊', roles: ['admin', 'manager'] },
 ]
 
 const bottomItems: NavItem[] = [
   { href: '/leaves', label: 'ระบบการลา', icon: '🏖️' },
+  { href: '/me/payroll', label: 'ประวัติเงินเดือน', icon: '💰', roles: ['user'] },
   { href: '/payroll', label: 'เงินเดือน', icon: '💰', roles: ['admin', 'manager'] },
+  { href: '/production', label: 'บันทึกงานผลิต', icon: '🖨️', roles: ['admin', 'manager'] },
+  { href: '/production/dashboard', label: 'Dashboard ผลผลิต', icon: '📦', roles: ['admin', 'manager'] },
   { href: '/employees', label: 'จัดการพนักงาน', icon: '👥', roles: ['admin', 'manager'] },
   { href: '/admin/users', label: 'จัดการผู้ใช้', icon: '🔑', roles: ['admin'] },
   { href: '/admin/audit', label: 'บันทึกการใช้งาน', icon: '🔍', roles: ['admin'] },
@@ -48,6 +52,7 @@ export default function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const canManage = user?.role === 'admin' || user?.role === 'manager'
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
 
   // Close mobile sidebar on route change
   useEffect(() => {
@@ -197,8 +202,8 @@ export default function Sidebar() {
             <NavLink key={item.href} item={item} pathname={pathname} collapsed={collapsed} />
           ))}
 
-          {/* รายงาน dropdown */}
-          <div>
+          {/* รายงาน dropdown — admin/manager only */}
+          {(role === 'admin' || role === 'manager') && <div>
             <button
               onClick={() => setReportsOpen(!reportsOpen)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
@@ -239,7 +244,7 @@ export default function Sidebar() {
                 ))}
               </div>
             )}
-          </div>
+          </div>}
 
           {visibleBottom.map((item) => (
             <NavLink
@@ -256,7 +261,7 @@ export default function Sidebar() {
         {user && (
           <div className={`p-3 border-t border-gray-100 flex-shrink-0 ${collapsed ? 'lg:flex lg:justify-center' : ''}`}>
             <button
-              onClick={logout}
+              onClick={() => setShowLogoutConfirm(true)}
               className={`text-sm text-gray-400 hover:text-red-600 py-2 rounded-lg hover:bg-red-50 transition-colors ${
                 collapsed ? 'lg:p-2 w-full px-3' : 'w-full px-3'
               }`}
@@ -274,6 +279,33 @@ export default function Sidebar() {
           </div>
         )}
       </aside>
+
+      {/* Logout Confirm Modal */}
+      {showLogoutConfirm && (
+        <div className="modal-backdrop" style={{ zIndex: 9999 }}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
+            <div className="text-center">
+              <p className="text-3xl mb-3">🚪</p>
+              <h3 className="text-lg font-bold text-gray-900 mb-1">ออกจากระบบ</h3>
+              <p className="text-sm text-gray-500">คุณต้องการออกจากระบบใช่หรือไม่?</p>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                className="btn-secondary flex-1"
+                onClick={() => setShowLogoutConfirm(false)}
+              >
+                ยกเลิก
+              </button>
+              <button
+                className="btn-danger flex-1"
+                onClick={() => { setShowLogoutConfirm(false); logout() }}
+              >
+                ออกจากระบบ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
