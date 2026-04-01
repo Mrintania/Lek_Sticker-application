@@ -10,8 +10,9 @@ export async function POST(req: NextRequest) {
   const user = getUserFromRequest(req)
   if (!user || !canManage(user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { year, month } = await req.json()
+  const { year, month, period } = await req.json()
   if (!year || !month) return NextResponse.json({ error: 'ต้องระบุ year และ month' }, { status: 400 })
+  const periodNum: 1 | 2 = period === 2 ? 2 : 1
 
   const db = getDb()
 
@@ -50,23 +51,36 @@ export async function POST(req: NextRequest) {
       )
   `).run()
 
-  // Get active holidays for the month
-  const startDate = `${year}-${String(month).padStart(2, '0')}-01`
-  const endDate = `${year}-${String(month).padStart(2, '0')}-31`
+  // ── กำหนด date range ตาม period ─────────────────────────────────────────
+  const mm = String(month).padStart(2, '0')
+  const startDate = `${year}-${mm}-01`
+  const endDate = `${year}-${mm}-31`
+  const lastDay = new Date(year, month, 0).getDate()
+  const periodStart = periodNum === 1 ? `${year}-${mm}-01` : `${year}-${mm}-16`
+  const periodEnd = periodNum === 1 ? `${year}-${mm}-15` : `${year}-${mm}-${String(lastDay).padStart(2, '0')}`
 
   // ── ตรวจสอบว่าเป็นเดือนปัจจุบันหรือไม่ ───────────────────────────────────
   const today = new Date()
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
   const isCurrentMonth = year === today.getFullYear() && month === (today.getMonth() + 1)
-  // สำหรับเดือนปัจจุบัน: ใช้วันที่วันนี้เป็นตัวตัด ไม่นับวันที่ยังไม่ถึง
-  const effectiveCutoff = isCurrentMonth ? todayStr : endDate
+
+  // สำหรับเดือนปัจจุบัน: ถ้ารอบยังไม่เริ่ม → แจ้งเตือน
+  if (isCurrentMonth && todayStr < periodStart) {
+    return NextResponse.json({
+      warning: 'no_data',
+      message: `รอบที่ ${periodNum} ยังไม่เริ่ม (เริ่มวันที่ ${periodNum === 2 ? '16' : '1'} ของเดือน)`,
+    })
+  }
+
+  // ตัวตัดของรอบ: ไม่เกิน periodEnd และไม่เกิน todayStr (ถ้าเดือนปัจจุบัน)
+  const effectivePeriodCutoff = isCurrentMonth && todayStr < periodEnd ? todayStr : periodEnd
 
   const activeHolidays = (db.prepare(
     `SELECT date FROM holidays WHERE is_active = 1 AND date >= ? AND date <= ?`
   ).all(startDate, endDate) as { date: string }[]).map((h) => h.date)
 
   const rawRows = db.prepare(`SELECT * FROM raw_scans WHERE scan_datetime >= ? AND scan_datetime <= ?`
-  ).all(startDate, effectiveCutoff + ' 23:59:59') as {
+  ).all(periodStart, effectivePeriodCutoff + ' 23:59:59') as {
     employee_id: string; employee_name: string; department: string;
     scan_datetime: string; direction: string; recorded_by: string
   }[]
@@ -76,8 +90,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       warning: 'no_data',
       message: isCurrentMonth
-        ? `ยังไม่มีข้อมูลการสแกนสำหรับเดือนนี้ (ข้อมูลถึง ${todayStr}) กรุณานำเข้าข้อมูลก่อนคำนวณเงินเดือน`
-        : 'ไม่มีข้อมูลการสแกนในเดือนนี้ ไม่สามารถคำนวณเงินเดือนได้',
+        ? `ยังไม่มีข้อมูลการสแกนสำหรับรอบที่ ${periodNum} (ข้อมูลถึง ${effectivePeriodCutoff}) กรุณานำเข้าข้อมูลก่อนคำนวณเงินเดือน`
+        : `ไม่มีข้อมูลการสแกนสำหรับรอบที่ ${periodNum} ไม่สามารถคำนวณเงินเดือนได้`,
     })
   }
 
@@ -88,10 +102,10 @@ export async function POST(req: NextRequest) {
 
   const master = buildAttendanceMaster(rawScans, settings)
 
-  // Get overrides for month
+  // Get overrides for the period only
   const overrides = db.prepare(
     `SELECT * FROM attendance_overrides WHERE date >= ? AND date <= ?`
-  ).all(startDate, endDate) as { employee_id: string; date: string; override_status: string }[]
+  ).all(periodStart, effectivePeriodCutoff) as { employee_id: string; date: string; override_status: string }[]
   const overrideMap = new Map(overrides.map((o) => [`${o.employee_id}__${o.date}`, o.override_status]))
 
   // Apply overrides to existing scan-based records
@@ -130,19 +144,21 @@ export async function POST(req: NextRequest) {
     employee_id: string; name: string; employment_type: string; daily_rate: number | null; monthly_salary: number | null
   }[]
 
-  // วันทำงานทั้งหมดในเดือน (ใช้แสดงใน UI)
+  // วันทำงานทั้งเดือน (ใช้คำนวณอัตรารายวันจากเงินเดือนรายเดือน)
   const allWorkingDates = getWorkingDaysInMonth(year, month, settings.workDays, activeHolidays)
-  // วันทำงานที่ผ่านมาแล้ว (ใช้คำนวณจริง — เดือนปัจจุบันตัดที่วันนี้)
-  const workingDates = isCurrentMonth
-    ? allWorkingDates.filter((d) => d <= todayStr)
-    : allWorkingDates
+  const totalWorkingDaysInMonth = allWorkingDates.length || 1
+
+  // วันทำงานทั้งหมดในรอบนี้
+  const allPeriodWorkingDates = allWorkingDates.filter((d) => d >= periodStart && d <= periodEnd)
+  // วันทำงานที่ผ่านมาแล้วในรอบนี้ (ตัดที่ effectivePeriodCutoff)
+  const workingDates = allPeriodWorkingDates.filter((d) => d <= effectivePeriodCutoff)
   const workingDays = workingDates.length
 
   const results = []
   const upsertPayroll = db.prepare(`INSERT INTO payroll_records
-    (employee_id, year, month, working_days, days_present, days_absent, days_sick_with_cert, days_sick_no_cert, days_half_day, total_late_minutes, base_pay, diligence_bonus, deductions, total_pay, created_by)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(employee_id, year, month) DO UPDATE SET
+    (employee_id, year, month, period, working_days, days_present, days_absent, days_sick_with_cert, days_sick_no_cert, days_half_day, total_late_minutes, base_pay, diligence_bonus, deductions, total_pay, created_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(employee_id, year, month, period) DO UPDATE SET
       working_days = excluded.working_days, days_present = excluded.days_present,
       days_absent = excluded.days_absent, days_sick_with_cert = excluded.days_sick_with_cert,
       days_sick_no_cert = excluded.days_sick_no_cert, days_half_day = excluded.days_half_day,
@@ -184,21 +200,20 @@ export async function POST(req: NextRequest) {
     let basePay = 0
     const deductions = 0 // ไม่มีการหักเงินเดือน
 
-    // จำนวนวันทำงานทั้งหมดในเดือน (ใช้หารเพื่อหาอัตรารายวัน)
-    const totalWorkingDaysInMonth = allWorkingDates.length || 1
-
     if (emp.employment_type === 'daily') {
-      // รายวัน: คิดตามวันที่ทำงานจริง (ครึ่งวัน = 0.5)
+      // รายวัน: คิดตามวันที่ทำงานจริงในรอบนี้ (ครึ่งวัน = 0.5)
       basePay = emp.daily_rate ? Math.max(0, effectiveDays) * emp.daily_rate : 0
     } else if (emp.employment_type === 'monthly') {
+      // รายเดือน: ฐาน = เงินเดือน ÷ 2 ต่อรอบ
+      const periodBaseSalary = (emp.monthly_salary ?? 0) / 2
       if (realAbsent > (ps.monthly_max_absent ?? 3.5)) {
-        // ขาดเกิน 3.5 วัน → คิดเป็นรายวันทันที
-        // อัตรารายวัน = เงินเดือน ÷ วันทำงานทั้งหมดในเดือน
+        // ขาด/ลาเกิน 3.5 วันในรอบนี้ → เปลี่ยนเป็นคิดรายวัน
+        // อัตรารายวัน = เงินเดือนเต็ม ÷ วันทำงานทั้งหมดในเดือน (ไม่ใช่ ÷ 2)
         const dailyRateFromSalary = (emp.monthly_salary ?? 0) / totalWorkingDaysInMonth
         basePay = Math.max(0, effectiveDays) * dailyRateFromSalary
       } else {
-        // ขาดไม่เกิน 3.5 วัน → ได้เงินเดือนเต็ม
-        basePay = emp.monthly_salary ?? 0
+        // ขาด/ลาไม่เกิน 3.5 วัน → ได้เงินเดือนครึ่งรอบ
+        basePay = periodBaseSalary
       }
     }
 
@@ -219,7 +234,7 @@ export async function POST(req: NextRequest) {
     const totalPay = Math.max(0, basePay - deductions + diligenceBonus)
 
     upsertPayroll.run(
-      emp.employee_id, year, month, workingDays, daysPresent, daysAbsent,
+      emp.employee_id, year, month, periodNum, workingDays, daysPresent, daysAbsent,
       daysSickWithCert, daysSickNoCert, daysHalfDay, totalLateMinutes,
       Math.round(basePay * 100) / 100, diligenceBonus,
       Math.round(deductions * 100) / 100, Math.round(totalPay * 100) / 100, user.username
@@ -244,9 +259,9 @@ export async function POST(req: NextRequest) {
     })
   }
 
-  logAudit(db, user.username, 'payroll.calculate', 'payroll', `${year}-${month}`, {
-    year, month, employeeCount: results.length,
+  logAudit(db, user.username, 'payroll.calculate', 'payroll', `${year}-${month}-${periodNum}`, {
+    year, month, period: periodNum, employeeCount: results.length,
   }, getIp(req))
 
-  return NextResponse.json({ success: true, year, month, results })
+  return NextResponse.json({ success: true, year, month, period: periodNum, results })
 }

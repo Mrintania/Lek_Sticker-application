@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev": "next dev --turbo",
-    "dev:clean": "rm -rf .next && next dev --turbo",
+    "dev": "concurrently -n \"next,warmup\" -c \"cyan,yellow\" \"next dev\" \"node scripts/dev-warmup.mjs\"",
+    "dev:clean": "rm -rf .next && concurrently -n \"next,warmup\" -c \"cyan,yellow\" \"next dev\" \"node scripts/dev-warmup.mjs\"",
     "build": "next build",
     "start": "next start",
     "tunnel": "ngrok http 3000",

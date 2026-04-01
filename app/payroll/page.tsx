@@ -14,6 +14,7 @@ interface PayrollRecord {
   employment_type: string
   year: number
   month: number
+  period: number
   working_days: number
   days_present: number
   days_absent: number
@@ -48,6 +49,7 @@ export default function PayrollPage() {
   const { user } = useCurrentUser()
   const [year, setYear] = useState(new Date().getFullYear())
   const [month, setMonth] = useState(new Date().getMonth() + 1)
+  const [period, setPeriod] = useState<1 | 2>(new Date().getDate() <= 15 ? 1 : 2)
   const [records, setRecords] = useState<PayrollRecord[]>([])
   const [paySettings, setPaySettings] = useState<PayrollSettings>({
     diligenceBonusEnabled: true,
@@ -76,23 +78,76 @@ export default function PayrollPage() {
   // Employee detail modal
   const [detailRecord, setDetailRecord] = useState<PayrollRecord | null>(null)
   const [detailAttendance, setDetailAttendance] = useState<AttendanceRecord[]>([])
+  const [detailAbsentDates, setDetailAbsentDates] = useState<{ date: string; type: string }[]>([])
   const [loadingDetail, setLoadingDetail] = useState(false)
 
   async function openDetail(r: PayrollRecord) {
     setDetailRecord(r)
     setDetailAttendance([])
+    setDetailAbsentDates([])
     setLoadingDetail(true)
     try {
-      const startDate = `${r.year}-${String(r.month).padStart(2, '0')}-01`
-      const endDate = `${r.year}-${String(r.month).padStart(2, '0')}-31`
-      const res = await fetch(`/api/attendance?start=${startDate}&end=${endDate}&employeeId=${r.employee_id}`)
-      if (res.ok) {
-        const data = await res.json()
-        setDetailAttendance(data.map((rec: AttendanceRecord & { checkIn: string | null; checkOut: string | null }) => ({
+      const mm = String(r.month).padStart(2, '0')
+      const lastDay = new Date(r.year, r.month, 0).getDate()
+      const periodNum = r.period ?? 1
+      const periodStart = periodNum === 1 ? `${r.year}-${mm}-01` : `${r.year}-${mm}-16`
+      const periodEnd   = periodNum === 1 ? `${r.year}-${mm}-15` : `${r.year}-${mm}-${String(lastDay).padStart(2, '0')}`
+
+      const [attRes, wsRes, holRes] = await Promise.all([
+        fetch(`/api/attendance?start=${periodStart}&end=${periodEnd}&employeeId=${r.employee_id}`),
+        fetch(`/api/settings`),
+        fetch(`/api/holidays?year=${r.year}`),
+      ])
+
+      if (attRes.ok) {
+        const data: (AttendanceRecord & { checkIn: string | null; checkOut: string | null })[] = await attRes.json()
+        setDetailAttendance(data.map((rec) => ({
           ...rec,
-          checkIn: rec.checkIn ? new Date(rec.checkIn) : null,
+          checkIn:  rec.checkIn  ? new Date(rec.checkIn)  : null,
           checkOut: rec.checkOut ? new Date(rec.checkOut) : null,
         })))
+
+        // ── คำนวณวันที่ขาดงาน ─────────────────────────────────────────────
+        if (wsRes.ok && holRes.ok) {
+          const ws  = await wsRes.json() as { workDays: number[] }
+          const hol = await holRes.json() as { date: string; is_active: number }[]
+          const holidaySet = new Set(hol.filter(h => h.is_active).map(h => h.date))
+
+          // สร้าง list วันทำงานในรอบนี้
+          // หมายเหตุ: workDays ในระบบใช้ encoding 0=จันทร์…5=เสาร์ 6=อาทิตย์
+          // ต่างจาก JS getDay() ที่ 0=อาทิตย์…6=เสาร์ → ต้องแปลงก่อนเทียบ
+          const workingDates: string[] = []
+          for (let d = 1; d <= lastDay; d++) {
+            const dateStr = `${r.year}-${mm}-${String(d).padStart(2, '0')}`
+            if (dateStr < periodStart || dateStr > periodEnd) continue
+            const jsDay = new Date(r.year, r.month - 1, d).getDay()
+            const ourDow = jsDay === 0 ? 6 : jsDay - 1  // แปลง JS→ encoding ระบบ
+            if (!ws.workDays.includes(ourDow)) continue
+            if (holidaySet.has(dateStr)) continue
+            workingDates.push(dateStr)
+          }
+
+          // วันที่มาทำงาน = มีข้อมูลการสแกน/ลา และไม่ใช่ absent-type
+          const ABSENT_STATUSES = new Set(['absent', 'leave_sick', 'leave_full_day'])
+          // map date → status ของ absent-type leaves (มีบันทึกการลา)
+          const leaveAbsentMap = new Map<string, string>(
+            data
+              .filter(rec => rec.status === 'leave_sick' || rec.status === 'leave_full_day')
+              .map(rec => [rec.date, rec.status] as [string, string])
+          )
+          const presentDates = new Set<string>(
+            data.filter(rec => !ABSENT_STATUSES.has(rec.status)).map(rec => rec.date)
+          )
+
+          // วันขาด = วันทำงานที่ไม่อยู่ใน presentDates
+          const absentDates = workingDates
+            .filter(d => !presentDates.has(d))
+            .map(d => ({
+              date: d,
+              type: leaveAbsentMap.get(d) ?? 'absent', // 'absent' | 'leave_sick' | 'leave_full_day'
+            }))
+          setDetailAbsentDates(absentDates)
+        }
       }
     } finally {
       setLoadingDetail(false)
@@ -116,12 +171,12 @@ export default function PayrollPage() {
     }
     document.addEventListener('visibilitychange', handleVisibility)
     return () => document.removeEventListener('visibilitychange', handleVisibility)
-  }, [year, month])
+  }, [year, month, period])
 
   async function loadPayroll() {
     const [payrollRes, prodRes] = await Promise.all([
-      fetch(`/api/payroll?year=${year}&month=${month}`),
-      fetch(`/api/production/summary?year=${year}&month=${month}`),
+      fetch(`/api/payroll?year=${year}&month=${month}&period=${period}`),
+      fetch(`/api/production/summary?year=${year}&month=${month}&period=${period}`),
     ])
     if (payrollRes.ok) {
       setRecords(await payrollRes.json())
@@ -145,7 +200,7 @@ export default function PayrollPage() {
       const res = await fetch('/api/payroll/calculate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ year, month }),
+        body: JSON.stringify({ year, month, period }),
       })
       const data = await res.json()
       if (data.warning === 'no_data') {
@@ -255,9 +310,12 @@ export default function PayrollPage() {
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900">เงินเดือน</h2>
           <div className="flex flex-wrap items-center gap-2 mt-1">
             <p className="text-gray-500 text-sm">{formatThaiMonthYear(year, month)}</p>
+            <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium">
+              {period === 1 ? 'รอบ 1 (1–15)' : `รอบ 2 (16–สิ้นเดือน)`}
+            </span>
             {isCurrentMonth && (
               <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium">
-                ⏳ ยังไม่ครบเดือน (ถึง {today.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })})
+                ⏳ ยังไม่ครบรอบ (ถึง {today.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })})
               </span>
             )}
             {refreshedAt && (
@@ -274,6 +332,21 @@ export default function PayrollPage() {
           <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="!w-auto">
             {years.map((y) => <option key={y} value={y}>{y + 543}</option>)}
           </select>
+          {/* Period selector */}
+          <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
+            <button
+              onClick={() => setPeriod(1)}
+              className={`px-3 py-1.5 font-medium transition-colors ${period === 1 ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+            >
+              รอบ 1
+            </button>
+            <button
+              onClick={() => setPeriod(2)}
+              className={`px-3 py-1.5 font-medium transition-colors border-l border-gray-200 ${period === 2 ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+            >
+              รอบ 2
+            </button>
+          </div>
           {canManage && (
             <>
               <button className="btn-secondary whitespace-nowrap" onClick={() => setShowSettings(!showSettings)}>⚙️ เบี้ยขยัน</button>
@@ -560,15 +633,15 @@ export default function PayrollPage() {
                           <span>{formatCurrency(r.base_pay)}</span>
                           {switchedToDaily && canManage && (
                             <button
-                              className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded hover:bg-yellow-200 transition-colors cursor-pointer"
-                              title={`คิดรายวัน: ${formatCurrency(r.base_pay / (r.days_present || 1))}/วัน — คลิกเพื่อตั้งค่าอัตราเอง`}
+                              className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded hover:bg-yellow-200 transition-colors"
+                              title={`คิดรายวัน (ขาด>${paySettings.monthlyMaxAbsent}วัน): ${formatCurrency(r.base_pay / (r.days_present || 1))}/วัน`}
                               onClick={() => { setDailyRateModal({ employeeId: r.employee_id, name: r.name }); setNewDailyRate('') }}
                             >
                               ⚠️ คิดรายวัน
                             </button>
                           )}
                           {switchedToDaily && !canManage && (
-                            <span className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded" title={`คิดรายวัน: ${formatCurrency(r.base_pay / (r.days_present || 1))}/วัน`}>⚠️ คิดรายวัน</span>
+                            <span className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded">⚠️ คิดรายวัน</span>
                           )}
                         </div>
                       </td>
@@ -681,6 +754,42 @@ export default function PayrollPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Absent dates section */}
+              {detailAbsentDates.length > 0 && (
+                <div className="px-6 pb-4">
+                  <div className="bg-red-50 border border-red-100 rounded-xl p-4">
+                    <p className="text-xs font-semibold text-red-600 uppercase tracking-wide mb-2.5">
+                      🚫 วันที่ขาดงาน ({detailAbsentDates.length} วัน)
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {detailAbsentDates.map(({ date, type }) => (
+                        <span
+                          key={date}
+                          className={`text-xs px-2.5 py-1 rounded-md font-medium ${
+                            type === 'leave_full_day' || type === 'leave_sick'
+                              ? 'bg-orange-100 text-orange-700'
+                              : 'bg-red-100 text-red-700'
+                          }`}
+                          title={
+                            type === 'leave_full_day' ? 'ลาทั้งวัน (ไม่ได้รับค่าจ้าง)'
+                            : type === 'leave_sick'    ? 'ลาป่วย (ไม่มีใบแพทย์)'
+                            : 'ขาดงาน'
+                          }
+                        >
+                          {formatThaiDateShort(date)}
+                          {(type === 'leave_full_day' || type === 'leave_sick') && (
+                            <span className="ml-1 opacity-60 text-[10px]">ลา</span>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-red-400 mt-2">
+                      🔴 แดง = ขาดงาน &nbsp;|&nbsp; 🟠 ส้ม = ลาไม่มีใบแพทย์ (นับเป็นวันขาด)
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Production section */}
               {detailRecord && productionByEmployee[detailRecord.employee_id] != null && (
