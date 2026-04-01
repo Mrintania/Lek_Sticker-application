@@ -173,25 +173,45 @@ export default function Sidebar() {
         {/* User badge */}
         {user && !collapsed && (
           <div className="px-4 py-3 mx-3 mt-3 bg-gray-50 rounded-lg border border-gray-100 flex-shrink-0">
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-gray-800 truncate">{user.fullName || user.username}</p>
                 <p className="text-xs text-gray-400 truncate">@{user.username}</p>
               </div>
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${ROLE_BADGE[role]?.cls ?? 'bg-gray-100 text-gray-600'}`}>
                 {ROLE_BADGE[role]?.label ?? role}
               </span>
+              {/* Logout icon button */}
+              <button
+                onClick={() => setShowLogoutConfirm(true)}
+                className="flex-shrink-0 p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                title="ออกจากระบบ"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </button>
             </div>
           </div>
         )}
         {user && collapsed && (
-          <div className="hidden lg:flex justify-center mt-3 flex-shrink-0">
+          <div className="hidden lg:flex flex-col items-center gap-2 mt-3 flex-shrink-0">
             <span
               className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${ROLE_BADGE[role]?.cls ?? 'bg-gray-100 text-gray-600'}`}
               title={ROLE_BADGE[role]?.label ?? role}
             >
               {(ROLE_BADGE[role]?.label ?? role).charAt(0)}
             </span>
+            {/* Logout icon — collapsed */}
+            <button
+              onClick={() => setShowLogoutConfirm(true)}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+              title="ออกจากระบบ"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+            </button>
           </div>
         )}
 
@@ -257,27 +277,6 @@ export default function Sidebar() {
           ))}
         </nav>
 
-        {/* Logout */}
-        {user && (
-          <div className={`p-3 border-t border-gray-100 flex-shrink-0 ${collapsed ? 'lg:flex lg:justify-center' : ''}`}>
-            <button
-              onClick={() => setShowLogoutConfirm(true)}
-              className={`text-sm text-gray-400 hover:text-red-600 py-2 rounded-lg hover:bg-red-50 transition-colors ${
-                collapsed ? 'lg:p-2 w-full px-3' : 'w-full px-3'
-              }`}
-              title="ออกจากระบบ"
-            >
-              {collapsed ? (
-                <span className="hidden lg:flex justify-center">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                  </svg>
-                </span>
-              ) : null}
-              <span className={collapsed ? 'lg:hidden' : ''}>🚪 ออกจากระบบ</span>
-            </button>
-          </div>
-        )}
       </aside>
 
       {/* Logout Confirm Modal */}
