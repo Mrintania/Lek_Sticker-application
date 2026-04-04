@@ -1,5 +1,5 @@
 'use client'
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import type { ScanPreviewResult } from '@/app/api/scans/preview/route'
 
@@ -96,6 +96,14 @@ export default function FileUpload() {
     setError(null)
     if (inputRef.current) inputRef.current.value = ''
   }
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape' && (step === 'confirm' || step === 'previewing')) handleCancel()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [step])
 
   function handleReset() {
     setStep('idle')

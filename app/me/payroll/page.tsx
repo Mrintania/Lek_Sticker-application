@@ -18,6 +18,10 @@ interface PayrollRec {
   base_pay: number
   diligence_bonus: number
   deductions: number
+  extra_bonus: number
+  extra_bonus_note: string | null
+  extra_deduction: number
+  extra_deduction_note: string | null
   total_pay: number
 }
 
@@ -33,6 +37,14 @@ export default function MyPayrollPage() {
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<PayrollRec | null>(null)
   const [expandedKey, setExpandedKey] = useState<string | null>(null)
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape' && selected) setSelected(null)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [selected])
 
   useEffect(() => {
     if (!user || userLoading) return
@@ -67,6 +79,14 @@ export default function MyPayrollPage() {
     seen.get(key)!.records.push(rec)
   }
 
+  // Filter out future months
+  const nowDate = new Date()
+  const nowYear = nowDate.getFullYear()
+  const nowMonth = nowDate.getMonth() + 1
+  const visibleGroups = grouped.filter(g =>
+    g.year < nowYear || (g.year === nowYear && g.month <= nowMonth)
+  )
+
   if (userLoading || loading) {
     return (
       <div className="page-container">
@@ -98,7 +118,7 @@ export default function MyPayrollPage() {
         </div>
       </div>
 
-      {grouped.length === 0 ? (
+      {visibleGroups.length === 0 ? (
         <div className="card text-center py-16">
           <p className="text-5xl mb-3">📭</p>
           <p className="text-gray-500 font-medium">ยังไม่มีข้อมูลเงินเดือน</p>
@@ -106,7 +126,7 @@ export default function MyPayrollPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {grouped.map((g) => {
+          {visibleGroups.map((g) => {
             const key = `${g.year}-${g.month}`
             const isOpen = expandedKey === key
             const monthTotal = g.records.reduce((s, r) => s + r.total_pay, 0)
@@ -272,6 +292,20 @@ export default function MyPayrollPage() {
                 <DetailRow label="เงินเดือนพื้นฐาน" value={formatCurrency(selected.base_pay)} />
                 {selected.diligence_bonus > 0 && (
                   <DetailRow label="เบี้ยขยัน" value={`+${formatCurrency(selected.diligence_bonus)}`} valueClass="text-green-600" />
+                )}
+                {(selected.extra_bonus ?? 0) > 0 && (
+                  <DetailRow
+                    label={`เงินเพิ่มพิเศษ${selected.extra_bonus_note ? ` (${selected.extra_bonus_note})` : ''}`}
+                    value={`+${formatCurrency(selected.extra_bonus)}`}
+                    valueClass="text-green-600"
+                  />
+                )}
+                {(selected.extra_deduction ?? 0) > 0 && (
+                  <DetailRow
+                    label={`หัก${selected.extra_deduction_note ? ` (${selected.extra_deduction_note})` : ''}`}
+                    value={`-${formatCurrency(selected.extra_deduction)}`}
+                    valueClass="text-red-600"
+                  />
                 )}
                 {selected.deductions > 0 && (
                   <DetailRow label="หักออก" value={`-${formatCurrency(selected.deductions)}`} valueClass="text-red-600" />

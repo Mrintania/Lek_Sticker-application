@@ -18,6 +18,7 @@ export type AuditAction =
   | 'attendance.override_delete'
   | 'scan.import'
   | 'payroll.calculate'
+  | 'payroll.adjustment'
   | 'settings.update'
   | 'settings.payroll_update'
   | 'scan.reset'
@@ -53,6 +54,7 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   'attendance.override_delete': 'ลบการแก้ไขสถานะ',
   'scan.import': 'นำเข้าข้อมูลสแกน',
   'payroll.calculate': 'คำนวณเงินเดือน',
+  'payroll.adjustment': 'ปรับเงินพิเศษ/หัก',
   'settings.update': 'แก้ไขการตั้งค่าระบบ',
   'settings.payroll_update': 'แก้ไขการตั้งค่าเงินเดือน',
   'scan.reset': 'ล้างข้อมูลสแกน',
@@ -89,6 +91,7 @@ export const AUDIT_ACTION_COLORS: Record<AuditAction, string> = {
   'attendance.override_delete': 'bg-red-100 text-red-700',
   'scan.import': 'bg-indigo-100 text-indigo-700',
   'payroll.calculate': 'bg-indigo-100 text-indigo-700',
+  'payroll.adjustment': 'bg-indigo-100 text-indigo-700',
   'settings.update': 'bg-orange-100 text-orange-700',
   'settings.payroll_update': 'bg-orange-100 text-orange-700',
   'scan.reset': 'bg-red-100 text-red-700',
