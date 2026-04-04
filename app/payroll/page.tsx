@@ -25,8 +25,20 @@ interface PayrollRecord {
   base_pay: number
   diligence_bonus: number
   deductions: number
+  extra_bonus: number
+  extra_bonus_note: string | null
+  extra_deduction: number
+  extra_deduction_note: string | null
   total_pay: number
   is_finalized: number
+}
+
+interface AdjustmentModal {
+  id: number
+  name: string
+  type: 'bonus' | 'deduction'
+  currentAmount: number
+  currentNote: string
 }
 
 interface DailyRateModal {
@@ -74,6 +86,12 @@ export default function PayrollPage() {
   const [newDailyRate, setNewDailyRate] = useState('')
   const [savingRate, setSavingRate] = useState(false)
   const [refreshedAt, setRefreshedAt] = useState<Date | null>(null)
+
+  // Adjustment modal
+  const [adjustmentModal, setAdjustmentModal] = useState<AdjustmentModal | null>(null)
+  const [adjAmount, setAdjAmount] = useState('')
+  const [adjNote, setAdjNote] = useState('')
+  const [savingAdj, setSavingAdj] = useState(false)
 
   // Employee detail modal
   const [detailRecord, setDetailRecord] = useState<PayrollRecord | null>(null)
@@ -243,6 +261,47 @@ export default function PayrollPage() {
     }
   }
 
+  function openAdjustment(r: PayrollRecord, type: 'bonus' | 'deduction') {
+    const currentAmount = type === 'bonus' ? (r.extra_bonus ?? 0) : (r.extra_deduction ?? 0)
+    const currentNote = type === 'bonus' ? (r.extra_bonus_note ?? '') : (r.extra_deduction_note ?? '')
+    setAdjustmentModal({ id: r.id, name: r.name, type, currentAmount, currentNote })
+    setAdjAmount(currentAmount > 0 ? String(currentAmount) : '')
+    setAdjNote(currentNote)
+  }
+
+  async function handleSaveAdjustment() {
+    if (!adjustmentModal) return
+    const amount = Number(adjAmount) || 0
+    setSavingAdj(true)
+    try {
+      const body = adjustmentModal.type === 'bonus'
+        ? { extra_bonus: amount, extra_bonus_note: adjNote }
+        : { extra_deduction: amount, extra_deduction_note: adjNote }
+      await fetch(`/api/payroll/${adjustmentModal.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      setAdjustmentModal(null)
+      await loadPayroll()
+    } finally {
+      setSavingAdj(false)
+    }
+  }
+
+  // Esc key closes modals (priority: adjustment > dailyRate > detail > settings)
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return
+      if (adjustmentModal) { setAdjustmentModal(null); return }
+      if (dailyRateModal) { setDailyRateModal(null); return }
+      if (detailRecord) { setDetailRecord(null); return }
+      if (showSettings) { setShowSettings(false) }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [adjustmentModal, dailyRateModal, detailRecord, showSettings])
+
   function handleSort(key: SortKey) {
     if (sortKey === key) {
       setSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -277,8 +336,10 @@ export default function PayrollPage() {
   const totals = records.reduce((s, r) => ({
     basePay: s.basePay + r.base_pay,
     bonus: s.bonus + r.diligence_bonus,
+    extraBonus: s.extraBonus + (r.extra_bonus ?? 0),
+    extraDeduction: s.extraDeduction + (r.extra_deduction ?? 0),
     totalPay: s.totalPay + r.total_pay,
-  }), { basePay: 0, bonus: 0, totalPay: 0 })
+  }), { basePay: 0, bonus: 0, extraBonus: 0, extraDeduction: 0, totalPay: 0 })
 
   const months = Array.from({ length: 12 }, (_, i) => i + 1)
   const years = [2024, 2025, 2026, 2027]
@@ -590,6 +651,7 @@ export default function PayrollPage() {
                     </span>
                   </th>
                 ))}
+                {canManage && <th className="table-header text-center">ปรับ</th>}
               </tr></thead>
               <tbody>
                 {sortedRecords.map((r) => {
@@ -650,7 +712,43 @@ export default function PayrollPage() {
                           ? <span className="text-green-600 font-medium">+{formatCurrency(r.diligence_bonus)}</span>
                           : <span className="text-gray-300">—</span>}
                       </td>
-                      <td className="table-cell text-right font-bold text-purple-700">{formatCurrency(r.total_pay)}</td>
+                      <td className="table-cell text-right">
+                        <p className="font-bold text-purple-700">{formatCurrency(r.total_pay)}</p>
+                        {(r.extra_bonus ?? 0) > 0 && (
+                          <p className="text-xs text-green-600">+{formatCurrency(r.extra_bonus)}</p>
+                        )}
+                        {(r.extra_deduction ?? 0) > 0 && (
+                          <p className="text-xs text-red-500">-{formatCurrency(r.extra_deduction)}</p>
+                        )}
+                      </td>
+                      {canManage && (
+                        <td className="table-cell">
+                          <div className="flex gap-1 justify-center">
+                            <button
+                              onClick={() => openAdjustment(r, 'bonus')}
+                              className={`text-xs px-2 py-1 rounded border transition-colors ${
+                                (r.extra_bonus ?? 0) > 0
+                                  ? 'bg-green-100 text-green-700 border-green-300 hover:bg-green-200'
+                                  : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-green-50 hover:text-green-600 hover:border-green-200'
+                              }`}
+                              title="เงินเพิ่มพิเศษ"
+                            >
+                              +เพิ่ม
+                            </button>
+                            <button
+                              onClick={() => openAdjustment(r, 'deduction')}
+                              className={`text-xs px-2 py-1 rounded border transition-colors ${
+                                (r.extra_deduction ?? 0) > 0
+                                  ? 'bg-red-100 text-red-700 border-red-300 hover:bg-red-200'
+                                  : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200'
+                              }`}
+                              title="หักเงิน"
+                            >
+                              -หัก
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   )
                 })}
@@ -658,7 +756,12 @@ export default function PayrollPage() {
                   <td className="table-cell" colSpan={9}>รวมทั้งหมด</td>
                   <td className="table-cell text-right text-blue-700">{formatCurrency(totals.basePay)}</td>
                   <td className="table-cell text-right text-green-700">{formatCurrency(totals.bonus)}</td>
-                  <td className="table-cell text-right text-purple-700">{formatCurrency(totals.totalPay)}</td>
+                  <td className="table-cell text-right">
+                    <p className="text-purple-700">{formatCurrency(totals.totalPay)}</p>
+                    {totals.extraBonus > 0 && <p className="text-xs text-green-600">+{formatCurrency(totals.extraBonus)}</p>}
+                    {totals.extraDeduction > 0 && <p className="text-xs text-red-500">-{formatCurrency(totals.extraDeduction)}</p>}
+                  </td>
+                  {canManage && <td className="table-cell" />}
                 </tr>
               </tbody>
             </table>
@@ -728,6 +831,18 @@ export default function PayrollPage() {
                       {detailRecord.diligence_bonus > 0 ? `+${formatCurrency(detailRecord.diligence_bonus)}` : '—'}
                     </span>
                   </div>
+                  {(detailRecord.extra_bonus ?? 0) > 0 && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-500">เงินเพิ่มพิเศษ{detailRecord.extra_bonus_note ? ` (${detailRecord.extra_bonus_note})` : ''}</span>
+                      <span className="text-green-600 font-medium">+{formatCurrency(detailRecord.extra_bonus)}</span>
+                    </div>
+                  )}
+                  {(detailRecord.extra_deduction ?? 0) > 0 && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-500">หัก{detailRecord.extra_deduction_note ? ` (${detailRecord.extra_deduction_note})` : ''}</span>
+                      <span className="text-red-600 font-medium">-{formatCurrency(detailRecord.extra_deduction)}</span>
+                    </div>
+                  )}
                   {detailRecord.deductions > 0 && (
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-500">หัก</span>
@@ -854,6 +969,66 @@ export default function PayrollPage() {
                     </table>
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Adjustment Modal */}
+      {adjustmentModal && (
+        <div className="modal-backdrop">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-sm">
+            <div className="p-4 sm:p-6 border-b border-gray-100">
+              <h3 className="text-lg font-bold text-gray-900">
+                {adjustmentModal.type === 'bonus' ? 'เงินเพิ่มพิเศษ' : 'หักเงิน'}
+              </h3>
+              <p className="text-sm text-gray-500 mt-1">{adjustmentModal.name}</p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">จำนวนเงิน (บาท)</label>
+                <input
+                  type="number"
+                  min={0}
+                  className="w-full"
+                  placeholder="เช่น 500"
+                  value={adjAmount}
+                  onChange={(e) => setAdjAmount(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">หมายเหตุ</label>
+                <input
+                  type="text"
+                  className="w-full"
+                  placeholder={adjustmentModal.type === 'bonus' ? 'เช่น ค่าทำความสะอาด' : 'เช่น เบิกล่วงหน้า'}
+                  value={adjNote}
+                  onChange={(e) => setAdjNote(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleSaveAdjustment() }}
+                />
+              </div>
+            </div>
+            <div className="p-4 sm:p-6 border-t border-gray-100 flex items-center justify-between gap-3">
+              <button
+                className="text-sm text-gray-400 hover:text-gray-600"
+                onClick={() => {
+                  setAdjAmount('0')
+                  setAdjNote('')
+                }}
+              >
+                ล้างค่า
+              </button>
+              <div className="flex gap-3">
+                <button className="btn-secondary" onClick={() => setAdjustmentModal(null)}>ยกเลิก</button>
+                <button
+                  className={`btn-primary ${adjustmentModal.type === 'deduction' ? '!bg-red-600 hover:!bg-red-700' : ''}`}
+                  onClick={handleSaveAdjustment}
+                  disabled={savingAdj}
+                >
+                  {savingAdj ? 'กำลังบันทึก...' : 'บันทึก'}
+                </button>
               </div>
             </div>
           </div>
