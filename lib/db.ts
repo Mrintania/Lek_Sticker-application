@@ -43,6 +43,13 @@ export function getDb(): Database.Database {
       `ALTER TABLE payroll_records ADD COLUMN extra_bonus_note TEXT`,
       `ALTER TABLE payroll_records ADD COLUMN extra_deduction REAL DEFAULT 0`,
       `ALTER TABLE payroll_records ADD COLUMN extra_deduction_note TEXT`,
+      // Performance indexes for frequent query patterns
+      `CREATE INDEX IF NOT EXISTS idx_leaves_employee_id ON leaves(employee_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_leaves_employee_date ON leaves(employee_id, date)`,
+      `CREATE INDEX IF NOT EXISTS idx_raw_scans_employee_id ON raw_scans(employee_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_payroll_records_employee_id ON payroll_records(employee_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_payroll_records_period ON payroll_records(year, month, period)`,
+      `CREATE INDEX IF NOT EXISTS idx_attendance_overrides_employee_id ON attendance_overrides(employee_id)`,
     ]
     for (const sql of migrations) {
       try { db.exec(sql) } catch {}

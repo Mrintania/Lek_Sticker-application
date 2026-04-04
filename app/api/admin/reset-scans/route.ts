@@ -8,10 +8,9 @@ export async function DELETE(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (user.role !== 'admin') return NextResponse.json({ error: 'เฉพาะ Admin เท่านั้น' }, { status: 403 })
 
-  const { searchParams } = new URL(req.url)
-  const confirm = searchParams.get('confirm')
+  const confirm = req.headers.get('x-confirm-reset')
   if (confirm !== 'yes') {
-    return NextResponse.json({ error: 'ต้องส่ง ?confirm=yes เพื่อยืนยัน' }, { status: 400 })
+    return NextResponse.json({ error: 'ต้องส่ง X-Confirm-Reset: yes header เพื่อยืนยัน' }, { status: 400 })
   }
 
   const db = getDb()

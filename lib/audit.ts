@@ -131,8 +131,8 @@ export function logAudit(
       details ? JSON.stringify(details) : null,
       ipAddress ?? null
     )
-  } catch {
-    // Silently fail — never let audit log errors break the main flow
+  } catch (err) {
+    console.error('[audit] Failed to write audit log:', err)
   }
 }
 

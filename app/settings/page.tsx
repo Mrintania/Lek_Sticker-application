@@ -128,7 +128,7 @@ export default function SettingsPage() {
     setResetting(true)
     setResetMsg(null)
     try {
-      const res = await fetch('/api/admin/reset-scans?confirm=yes', { method: 'DELETE' })
+      const res = await fetch('/api/admin/reset-scans', { method: 'DELETE', headers: { 'X-Confirm-Reset': 'yes' } })
       const data = await res.json()
       if (res.ok) {
         clearAttendance()
