@@ -713,13 +713,22 @@ export default function PayrollPage() {
                           : <span className="text-gray-300">—</span>}
                       </td>
                       <td className="table-cell text-right">
-                        <p className="font-bold text-purple-700">{formatCurrency(r.total_pay)}</p>
-                        {(r.extra_bonus ?? 0) > 0 && (
-                          <p className="text-xs text-green-600">+{formatCurrency(r.extra_bonus)}</p>
-                        )}
-                        {(r.extra_deduction ?? 0) > 0 && (
-                          <p className="text-xs text-red-500">-{formatCurrency(r.extra_deduction)}</p>
-                        )}
+                        {(() => {
+                          const extraB = r.extra_bonus ?? 0
+                          const extraD = r.extra_deduction ?? 0
+                          const hasAdj = extraB > 0 || extraD > 0
+                          const net = r.base_pay + r.diligence_bonus + extraB - extraD
+                          return (
+                            <>
+                              {hasAdj && (
+                                <p className="text-xs text-gray-400 line-through">{formatCurrency(r.base_pay + r.diligence_bonus)}</p>
+                              )}
+                              {extraB > 0 && <p className="text-xs text-green-600">+{formatCurrency(extraB)}</p>}
+                              {extraD > 0 && <p className="text-xs text-red-500">-{formatCurrency(extraD)}</p>}
+                              <p className="font-bold text-purple-700">{formatCurrency(net)}</p>
+                            </>
+                          )
+                        })()}
                       </td>
                       {canManage && (
                         <td className="table-cell">
@@ -757,9 +766,12 @@ export default function PayrollPage() {
                   <td className="table-cell text-right text-blue-700">{formatCurrency(totals.basePay)}</td>
                   <td className="table-cell text-right text-green-700">{formatCurrency(totals.bonus)}</td>
                   <td className="table-cell text-right">
-                    <p className="text-purple-700">{formatCurrency(totals.totalPay)}</p>
+                    {(totals.extraBonus > 0 || totals.extraDeduction > 0) && (
+                      <p className="text-xs text-gray-400 line-through">{formatCurrency(totals.basePay + totals.bonus)}</p>
+                    )}
                     {totals.extraBonus > 0 && <p className="text-xs text-green-600">+{formatCurrency(totals.extraBonus)}</p>}
                     {totals.extraDeduction > 0 && <p className="text-xs text-red-500">-{formatCurrency(totals.extraDeduction)}</p>}
+                    <p className="font-semibold text-purple-700">{formatCurrency(totals.basePay + totals.bonus + totals.extraBonus - totals.extraDeduction)}</p>
                   </td>
                   {canManage && <td className="table-cell" />}
                 </tr>

@@ -178,7 +178,8 @@ export async function POST(req: NextRequest) {
       days_sick_no_cert = excluded.days_sick_no_cert, days_half_day = excluded.days_half_day,
       total_late_minutes = excluded.total_late_minutes, base_pay = excluded.base_pay,
       diligence_bonus = excluded.diligence_bonus, deductions = excluded.deductions,
-      total_pay = excluded.total_pay, created_by = excluded.created_by`)
+      total_pay = excluded.total_pay + COALESCE(payroll_records.extra_bonus, 0) - COALESCE(payroll_records.extra_deduction, 0),
+      created_by = excluded.created_by`)
 
   for (const emp of employees) {
     // Only include records on working days (Mon–Sat per settings, no Sunday)
