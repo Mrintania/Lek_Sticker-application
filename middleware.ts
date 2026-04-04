@@ -3,6 +3,17 @@ import { NextRequest, NextResponse } from 'next/server'
 const PUBLIC_PATHS = ['/login', '/api/auth/login']
 const COOKIE_NAME = 'att_token'
 
+function withSecurityHeaders(res: NextResponse): NextResponse {
+  res.headers.set('X-Content-Type-Options', 'nosniff')
+  res.headers.set('X-Frame-Options', 'DENY')
+  res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+  res.headers.set(
+    'Content-Security-Policy',
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'"
+  )
+  return res
+}
+
 // Lightweight JWT payload decode for Edge Runtime (no Node.js crypto needed)
 // Full cryptographic verification still happens in each API route via jsonwebtoken
 function decodeJwtPayload(token: string): { role?: string } | null {
@@ -23,7 +34,7 @@ export function middleware(req: NextRequest) {
 
   // Allow public paths
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
-    return NextResponse.next()
+    return withSecurityHeaders(NextResponse.next())
   }
 
   // Allow static files
@@ -36,27 +47,27 @@ export function middleware(req: NextRequest) {
 
   if (!payload) {
     if (pathname.startsWith('/api/')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
-    return NextResponse.redirect(new URL('/login', req.url))
+    return withSecurityHeaders(NextResponse.redirect(new URL('/login', req.url)))
   }
 
   // Redirect root to personal dashboard for user role
   if (pathname === '/' && payload.role === 'user') {
-    return NextResponse.redirect(new URL('/me', req.url))
+    return withSecurityHeaders(NextResponse.redirect(new URL('/me', req.url)))
   }
 
   // Admin-only routes: /admin/* and /api/users
   if (pathname.startsWith('/admin') || pathname.startsWith('/api/users')) {
     if (payload.role !== 'admin') {
       if (pathname.startsWith('/api/')) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+        return withSecurityHeaders(NextResponse.json({ error: 'Forbidden' }, { status: 403 }))
       }
-      return NextResponse.redirect(new URL('/dashboard', req.url))
+      return withSecurityHeaders(NextResponse.redirect(new URL('/dashboard', req.url)))
     }
   }
 
-  return NextResponse.next()
+  return withSecurityHeaders(NextResponse.next())
 }
 
 export const config = {

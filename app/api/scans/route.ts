@@ -23,6 +23,13 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(scans)
 }
 
+const ALLOWED_MIME_TYPES = new Set([
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-excel',
+  'application/octet-stream',
+])
+const MAX_FILE_SIZE = 10 * 1024 * 1024
+
 export async function POST(req: NextRequest) {
   const user = getUserFromRequest(req)
   if (!user || !canManage(user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -30,6 +37,8 @@ export async function POST(req: NextRequest) {
   const formData = await req.formData()
   const file = formData.get('file') as File
   if (!file) return NextResponse.json({ error: 'ไม่พบไฟล์' }, { status: 400 })
+  if (file.size > MAX_FILE_SIZE) return NextResponse.json({ error: 'ไฟล์ขนาดใหญ่เกิน 10MB' }, { status: 400 })
+  if (!ALLOWED_MIME_TYPES.has(file.type)) return NextResponse.json({ error: 'รองรับเฉพาะไฟล์ Excel (.xlsx, .xls)' }, { status: 400 })
 
   const buffer = await file.arrayBuffer()
   const records = parseExcelFile(buffer)

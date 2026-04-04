@@ -10,8 +10,13 @@ export async function POST(req: NextRequest) {
   const user = getUserFromRequest(req)
   if (!user || !canManage(user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { year, month, period } = await req.json()
-  if (!year || !month) return NextResponse.json({ error: 'ต้องระบุ year และ month' }, { status: 400 })
+  const body = await req.json()
+  const year = Number(body.year)
+  const month = Number(body.month)
+  const period = Number(body.period)
+  if (!year || year < 2020 || year > 2030) return NextResponse.json({ error: 'year ไม่ถูกต้อง (2020–2030)' }, { status: 400 })
+  if (!month || month < 1 || month > 12) return NextResponse.json({ error: 'month ไม่ถูกต้อง (1–12)' }, { status: 400 })
+  if (![1, 2].includes(period)) return NextResponse.json({ error: 'period ต้องเป็น 1 หรือ 2' }, { status: 400 })
   const periodNum: 1 | 2 = period === 2 ? 2 : 1
 
   const db = getDb()
@@ -154,6 +159,15 @@ export async function POST(req: NextRequest) {
   const workingDates = allPeriodWorkingDates.filter((d) => d <= effectivePeriodCutoff)
   const workingDays = workingDates.length
 
+  // Build lookup structures once — avoids O(N×M) filter inside the employee loop
+  const masterByEmployee = new Map<string, typeof mergedMaster>()
+  for (const rec of mergedMaster) {
+    const arr = masterByEmployee.get(rec.employeeId) ?? []
+    arr.push(rec)
+    masterByEmployee.set(rec.employeeId, arr)
+  }
+  const workingDateSet = new Set(workingDates)
+
   const results = []
   const upsertPayroll = db.prepare(`INSERT INTO payroll_records
     (employee_id, year, month, period, working_days, days_present, days_absent, days_sick_with_cert, days_sick_no_cert, days_half_day, total_late_minutes, base_pay, diligence_bonus, deductions, total_pay, created_by)
@@ -168,7 +182,7 @@ export async function POST(req: NextRequest) {
 
   for (const emp of employees) {
     // Only include records on working days (Mon–Sat per settings, no Sunday)
-    const empRecords = mergedMaster.filter((r) => r.employeeId === emp.employee_id && workingDates.includes(r.date))
+    const empRecords = (masterByEmployee.get(emp.employee_id) ?? []).filter((r) => workingDateSet.has(r.date))
 
     // Working dates where employee has a valid scan (status ≠ 'absent')
     const presentDateSet = new Set(empRecords.filter((r) => r.status !== 'absent').map((r) => r.date))
