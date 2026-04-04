@@ -40,7 +40,7 @@ const bottomItems: NavItem[] = [
   { href: '/employees', label: 'จัดการพนักงาน', icon: '👥', roles: ['admin', 'manager'] },
   { href: '/admin/users', label: 'จัดการผู้ใช้', icon: '🔑', roles: ['admin'] },
   { href: '/admin/audit', label: 'บันทึกการใช้งาน', icon: '🔍', roles: ['admin'] },
-  { href: '/settings', label: 'ตั้งค่า', icon: '⚙️', roles: ['admin'] },
+  { href: '/settings', label: 'ตั้งค่า', icon: '⚙️', roles: ['admin', 'manager'] },
 ]
 
 export default function Sidebar() {

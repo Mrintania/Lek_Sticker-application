@@ -38,6 +38,11 @@ export function getDb(): Database.Database {
       `CREATE INDEX IF NOT EXISTS idx_machine_assignments_employee ON machine_assignments(employee_id)`,
       `CREATE INDEX IF NOT EXISTS idx_production_records_date ON production_records(date)`,
       `CREATE INDEX IF NOT EXISTS idx_production_items_record ON production_items(record_id)`,
+      // Payroll manual adjustments (เงินเพิ่มพิเศษ / หัก)
+      `ALTER TABLE payroll_records ADD COLUMN extra_bonus REAL DEFAULT 0`,
+      `ALTER TABLE payroll_records ADD COLUMN extra_bonus_note TEXT`,
+      `ALTER TABLE payroll_records ADD COLUMN extra_deduction REAL DEFAULT 0`,
+      `ALTER TABLE payroll_records ADD COLUMN extra_deduction_note TEXT`,
     ]
     for (const sql of migrations) {
       try { db.exec(sql) } catch {}
