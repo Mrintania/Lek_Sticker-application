@@ -140,9 +140,9 @@ export default function DeliveryPage() {
   }
 
   async function handleSave() {
-    const validItems = itemEdits.filter(i => i.model_name.toString().trim() && Number(i.quantity) > 0)
+    const validItems = itemEdits.filter(i => Number(i.quantity) > 0)
     if (validItems.length === 0) {
-      setSaveMsg('กรุณากรอกชื่อรุ่นและจำนวนอย่างน้อย 1 รายการ')
+      setSaveMsg('กรุณากรอกจำนวนอย่างน้อย 1 รายการ')
       setSaveMsgType('error')
       setTimeout(() => setSaveMsg(''), 3000)
       return
@@ -154,11 +154,7 @@ export default function DeliveryPage() {
       body: JSON.stringify({
         date: selectedDate,
         notes: notesEdit || undefined,
-        items: validItems.map(i => ({
-          model_name: String(i.model_name).trim(),
-          quantity: Number(i.quantity),
-          destination: i.destination?.trim() || undefined,
-        })),
+        items: validItems.map(i => ({ quantity: Number(i.quantity) })),
       }),
     })
     setSaving(false)

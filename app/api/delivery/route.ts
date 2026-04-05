@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json() as {
     date: string
     notes?: string
-    items: { model_name: string; quantity: number; destination?: string }[]
+    items: { quantity: number }[]
   }
 
   const { date, notes, items } = body
@@ -79,7 +79,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'ต้องกรอกรายการอย่างน้อย 1 รายการ' }, { status: 400 })
   }
   for (const item of items) {
-    if (!item.model_name?.trim()) return NextResponse.json({ error: 'กรุณากรอกชื่อรุ่น/สินค้า' }, { status: 400 })
     if (!item.quantity || item.quantity <= 0) return NextResponse.json({ error: 'จำนวนต้องมากกว่า 0' }, { status: 400 })
   }
 
@@ -100,8 +99,8 @@ export async function POST(req: NextRequest) {
 
     for (let i = 0; i < items.length; i++) {
       db.prepare(
-        `INSERT INTO delivery_items (record_id, model_name, quantity, destination, sort_order) VALUES (?, ?, ?, ?, ?)`
-      ).run(record.id, items[i].model_name.trim(), items[i].quantity, items[i].destination?.trim() || null, i)
+        `INSERT INTO delivery_items (record_id, model_name, quantity, sort_order) VALUES (?, ?, ?, ?)`
+      ).run(record.id, '', items[i].quantity, i)
     }
 
     return record.id
