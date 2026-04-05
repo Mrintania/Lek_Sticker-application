@@ -170,15 +170,7 @@ export default function ProductionPage() {
     return assignmentEdits[machineId] ?? { slot1: '', slot2: '' }
   }
 
-  function getUsedEmployeeIds(excludeMachineId: number, excludeSlot: number): Set<string> {
-    const used = new Set<string>()
-    for (const [machId, asg] of Object.entries(assignmentEdits)) {
-      const mId = Number(machId)
-      if (asg.slot1 && !(mId === excludeMachineId && excludeSlot === 1)) used.add(asg.slot1)
-      if (asg.slot2 && !(mId === excludeMachineId && excludeSlot === 2)) used.add(asg.slot2)
-    }
-    return used
-  }
+
 
   function getItemsForMachine(machineId: number): ProductionItem[] {
     return itemEdits[machineId] ?? [{ model_name: '', quantity: '' }]
@@ -572,7 +564,6 @@ export default function ProductionPage() {
                       {[1, 2].map((slot) => {
                         const currentVal = slot === 1 ? asg.slot1 : asg.slot2
                         const currentEmp = slot === 1 ? emp1 : emp2
-                        const usedIds = getUsedEmployeeIds(machine.id, slot)
                         return (
                           <div key={slot} className="relative">
                             <label className="block text-xs text-gray-400 mb-1">คนที่ {slot}</label>
@@ -592,14 +583,11 @@ export default function ProductionPage() {
                                 }}
                               >
                                 <option value="">— ไม่มี —</option>
-                                {employees.map(emp => {
-                                  const isUsedElsewhere = usedIds.has(emp.employeeId)
-                                  return (
-                                    <option key={emp.employeeId} value={emp.employeeId} disabled={isUsedElsewhere}>
-                                      {emp.name}{isUsedElsewhere ? ' (ถูกมอบหมายแล้ว)' : ''}
-                                    </option>
-                                  )
-                                })}
+                                {employees.map(emp => (
+                                  <option key={emp.employeeId} value={emp.employeeId}>
+                                    {emp.name}
+                                  </option>
+                                ))}
                               </select>
                             </div>
                           </div>
