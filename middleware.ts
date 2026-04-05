@@ -18,7 +18,7 @@ const ADMIN_PAGES = ['/admin']
 // API paths that require admin OR manager role
 const MANAGER_API = [
   '/api/employees', '/api/scans', '/api/holidays',
-  '/api/attendance', '/api/production', '/api/settings',
+  '/api/production', '/api/settings',
   '/api/payroll/calculate', '/api/payroll/settings',
 ]
 
