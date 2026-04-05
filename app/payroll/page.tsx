@@ -1121,7 +1121,7 @@ export default function PayrollPage() {
                             <>
                               <span
                                 className="inline-flex items-center gap-1 text-xs font-medium bg-green-100 text-green-700 px-2.5 py-1 rounded-full"
-                                title={r.paid_at ? `จ่ายโดย ${r.paid_by ?? ''} เมื่อ ${new Date(r.paid_at).toLocaleDateString('th-TH')}` : undefined}
+                                title={r.paid_at ? `จ่ายโดย ${r.paid_by ?? ''} เมื่อ ${new Date(r.paid_at.endsWith('Z') ? r.paid_at : r.paid_at + 'Z').toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' })}` : undefined}
                               >
                                 {r.payment_method ? PAYMENT_METHOD_ICONS[r.payment_method] : '✅'} จ่ายแล้ว
                               </span>

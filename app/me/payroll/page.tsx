@@ -342,10 +342,12 @@ export default function MyPayrollPage() {
                     </span>
                     {selected.paid_at && (
                       <span className="text-xs text-gray-400">
-                        {new Date(selected.paid_at).toLocaleDateString('th-TH', {
-                          day: 'numeric', month: 'short', year: '2-digit',
-                          hour: '2-digit', minute: '2-digit'
-                        })}
+                        {new Date(selected.paid_at.endsWith('Z') ? selected.paid_at : selected.paid_at + 'Z')
+                          .toLocaleDateString('th-TH', {
+                            day: 'numeric', month: 'short', year: '2-digit',
+                            hour: '2-digit', minute: '2-digit',
+                            timeZone: 'Asia/Bangkok',
+                          })}
                       </span>
                     )}
                   </div>
