@@ -81,6 +81,9 @@ export default function ProductionPage() {
   const [savingAssignment, setSavingAssignment] = useState<number | null>(null)
   const [copyingPrev, setCopyingPrev] = useState(false)
   const [copyMsg, setCopyMsg] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<{ machineId: number; machineName: string } | null>(null)
+  const autoSaveTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({})
+  const [autoSaveMsg, setAutoSaveMsg] = useState<Record<number, 'saving' | 'saved' | ''>>({})
   const [savingRecord, setSavingRecord] = useState<number | null>(null)
   const [assignmentEdits, setAssignmentEdits] = useState<Record<number, { slot1: string; slot2: string }>>({})
   const [itemEdits, setItemEdits] = useState<Record<number, ProductionItem[]>>({})
@@ -243,9 +246,27 @@ export default function ProductionPage() {
   async function deleteRecord(machineId: number) {
     const record = records[machineId]
     if (!record?.id) return
-    if (!confirm('ลบบันทึกงานของแท่นนี้?')) return
     await fetch(`/api/production/records/${record.id}`, { method: 'DELETE' })
+    setDeleteTarget(null)
     loadDayData(selectedDate)
+  }
+
+  function triggerAutoSaveAssignment(machineId: number, newAsg: { slot1: string; slot2: string }) {
+    // Clear existing timer for this machine
+    if (autoSaveTimers.current[machineId]) clearTimeout(autoSaveTimers.current[machineId])
+    setAutoSaveMsg(p => ({ ...p, [machineId]: 'saving' }))
+    autoSaveTimers.current[machineId] = setTimeout(async () => {
+      const asgns = []
+      if (newAsg.slot1) asgns.push({ slot: 1, employee_id: newAsg.slot1 })
+      if (newAsg.slot2) asgns.push({ slot: 2, employee_id: newAsg.slot2 })
+      await fetch('/api/production/assignments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ machine_id: machineId, date: selectedDate, assignments: asgns }),
+      })
+      setAutoSaveMsg(p => ({ ...p, [machineId]: 'saved' }))
+      setTimeout(() => setAutoSaveMsg(p => ({ ...p, [machineId]: '' })), 2500)
+    }, 600)
   }
 
   async function saveMachine() {
@@ -518,7 +539,7 @@ export default function ProductionPage() {
                   </div>
                   {isSaved && (
                     <button
-                      onClick={() => deleteRecord(machine.id)}
+                      onClick={() => setDeleteTarget({ machineId: machine.id, machineName: machine.name })}
                       className="flex-shrink-0 text-xs text-red-400 hover:text-red-600 hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition-colors font-medium"
                     >
                       ลบ
@@ -531,13 +552,17 @@ export default function ProductionPage() {
                   <div className="px-4 py-3">
                     <div className="flex items-center justify-between mb-2.5">
                       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">พนักงาน</p>
-                      <button
-                        onClick={() => saveAssignment(machine.id)}
-                        disabled={savingAssignment === machine.id}
-                        className="text-xs text-teal-600 hover:text-teal-800 font-semibold px-2.5 py-1 rounded-lg hover:bg-teal-50 transition-colors disabled:opacity-50"
-                      >
-                        {savingAssignment === machine.id ? 'กำลังบันทึก...' : assignMsg ? `บันทึกแล้ว ${assignMsg}` : 'บันทึกการมอบหมาย'}
-                      </button>
+                      {autoSaveMsg[machine.id] === 'saving' && (
+                        <span className="text-xs text-gray-400 flex items-center gap-1">
+                          <svg className="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                          กำลังบันทึก...
+                        </span>
+                      )}
+                      {autoSaveMsg[machine.id] === 'saved' && (
+                        <span className="text-xs text-teal-600 font-semibold">✓ บันทึกแล้ว</span>
+                      )}
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       {[1, 2].map((slot) => {
@@ -556,10 +581,11 @@ export default function ProductionPage() {
                               <select
                                 className={`w-full text-sm border border-gray-200 rounded-xl py-2 pr-3 bg-white focus:ring-2 focus:ring-teal-300 focus:border-teal-400 outline-none transition-all ${currentEmp ? 'pl-9' : 'pl-3'}`}
                                 value={currentVal}
-                                onChange={(e) => setAssignmentEdits(prev => ({
-                                  ...prev,
-                                  [machine.id]: { ...getAssignmentForMachine(machine.id), [`slot${slot}`]: e.target.value }
-                                }))}
+                                onChange={(e) => {
+                                  const newAsg = { ...getAssignmentForMachine(machine.id), [`slot${slot}`]: e.target.value }
+                                  setAssignmentEdits(prev => ({ ...prev, [machine.id]: newAsg }))
+                                  triggerAutoSaveAssignment(machine.id, newAsg)
+                                }}
                               >
                                 <option value="">— ไม่มี —</option>
                                 {employees.map(emp => {
@@ -752,6 +778,46 @@ export default function ProductionPage() {
             <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
               <span className="w-2 h-2 rounded-full bg-teal-500 inline-block" />
               <span>มีการบันทึกงานแล้ว</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete Confirmation Dialog ── */}
+      {deleteTarget && (
+        <div className="modal-backdrop" onClick={() => setDeleteTarget(null)}>
+          <div
+            className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4 flex flex-col gap-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <div>
+                <p className="font-bold text-gray-900">ยืนยันการลบบันทึก</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  ต้องการลบบันทึกงานผลิตของ<br />
+                  <span className="font-semibold text-gray-700">{deleteTarget.machineName}</span> ใช่ไหม?
+                </p>
+                <p className="text-xs text-red-400 mt-2 bg-red-50 rounded-lg px-3 py-1.5">ข้อมูลจะถูกลบถาวร ไม่สามารถกู้คืนได้</p>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={() => deleteRecord(deleteTarget.machineId)}
+                className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors"
+              >
+                ลบบันทึก
+              </button>
             </div>
           </div>
         </div>
