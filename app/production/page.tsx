@@ -344,9 +344,13 @@ export default function ProductionPage() {
         if (a.slot === 2) asgMap[a.machine_id].slot2 = a.employee_id
       }
       setAssignmentEdits(asgMap)
+      // Auto-save each machine's assignment
+      for (const [machineIdStr, asg] of Object.entries(asgMap)) {
+        triggerAutoSaveAssignment(Number(machineIdStr), asg)
+      }
       const count = asgns.length
-      setCopyMsg(`คัดลอกแล้ว ${count} การมอบหมาย — อย่าลืมกด "บันทึกการมอบหมาย" ด้วยนะ`)
-      setTimeout(() => setCopyMsg(''), 5000)
+      setCopyMsg(`คัดลอกแล้ว ${count} การมอบหมาย`)
+      setTimeout(() => setCopyMsg(''), 4000)
     } finally {
       setCopyingPrev(false)
     }
