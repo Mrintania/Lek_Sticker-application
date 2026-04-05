@@ -100,6 +100,7 @@ export default function ProductionPage() {
   const [showCalendar, setShowCalendar] = useState(false)
   const [calendarYM, setCalendarYM] = useState(() => selectedDate.slice(0, 7)) // 'YYYY-MM'
   const [recordedDates, setRecordedDates] = useState<Set<string>>(new Set())
+  const [holidayDates, setHolidayDates] = useState<Map<string, string>>(new Map()) // date → name
   const calendarRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -146,7 +147,7 @@ export default function ProductionPage() {
   useEffect(() => { loadMachines() }, [loadMachines])
   useEffect(() => { if (machines.length > 0 || selectedDate) loadDayData(selectedDate) }, [selectedDate, loadDayData])
 
-  // Fetch which dates in calendarYM have production records
+  // Fetch which dates in calendarYM have production records + holidays
   useEffect(() => {
     if (!showCalendar) return
     const [y, m] = calendarYM.split('-')
@@ -154,6 +155,16 @@ export default function ProductionPage() {
       .then(r => r.json())
       .then(data => {
         setRecordedDates(new Set((data.byDate as { date: string }[]).map(d => d.date)))
+      })
+      .catch(() => {})
+    fetch(`/api/holidays?year=${y}`)
+      .then(r => r.json())
+      .then((data: { date: string; name: string; is_active: number }[]) => {
+        const map = new Map<string, string>()
+        for (const h of data) {
+          if (h.is_active) map.set(h.date, h.name)
+        }
+        setHolidayDates(map)
       })
       .catch(() => {})
   }, [showCalendar, calendarYM])
@@ -745,21 +756,34 @@ export default function ProductionPage() {
                 const isToday2 = dateStr === today
                 const hasRecord = recordedDates.has(dateStr)
                 const isFuture = dateStr > today
+                const holidayName = holidayDates.get(dateStr)
+                const isHoliday = !!holidayName
                 return (
                   <button
                     key={dateStr}
                     onClick={() => selectCalendarDate(dateStr)}
                     disabled={isFuture}
+                    title={holidayName}
                     className={`relative flex flex-col items-center justify-center h-9 w-full rounded-xl text-sm font-medium transition-colors
                       ${isSelected ? 'bg-teal-500 text-white shadow-md' : ''}
-                      ${!isSelected && isToday2 ? 'bg-teal-50 text-teal-700 font-bold' : ''}
-                      ${!isSelected && !isToday2 && !isFuture ? 'text-gray-700 hover:bg-gray-100' : ''}
-                      ${isFuture ? 'text-gray-300 cursor-not-allowed' : 'cursor-pointer'}
+                      ${!isSelected && isHoliday ? 'bg-red-50 text-red-500' : ''}
+                      ${!isSelected && !isHoliday && isToday2 ? 'bg-teal-50 text-teal-700 font-bold' : ''}
+                      ${!isSelected && !isHoliday && !isToday2 && !isFuture ? 'text-gray-700 hover:bg-gray-100' : ''}
+                      ${isFuture && !isHoliday ? 'text-gray-300 cursor-not-allowed' : ''}
+                      ${isFuture && isHoliday ? 'text-red-300 cursor-not-allowed' : ''}
+                      ${!isFuture ? 'cursor-pointer' : ''}
                     `}
                   >
                     <span>{Number(dateStr.split('-')[2])}</span>
-                    {hasRecord && (
-                      <span className={`absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-teal-500'}`} />
+                    {(hasRecord || isHoliday) && (
+                      <span className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-0.5">
+                        {hasRecord && (
+                          <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-teal-500'}`} />
+                        )}
+                        {isHoliday && (
+                          <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-red-400'}`} />
+                        )}
+                      </span>
                     )}
                   </button>
                 )
@@ -767,9 +791,15 @@ export default function ProductionPage() {
             </div>
 
             {/* Legend */}
-            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
-              <span className="w-2 h-2 rounded-full bg-teal-500 inline-block" />
-              <span>มีการบันทึกงานแล้ว</span>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-teal-500 inline-block" />
+                <span>มีการบันทึกงานแล้ว</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-red-400 inline-block" />
+                <span>วันหยุด</span>
+              </div>
             </div>
           </div>
         </div>
