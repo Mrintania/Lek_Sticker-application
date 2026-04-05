@@ -17,21 +17,14 @@ interface SummaryData {
 type EmpSortKey = 'employee_name' | 'total_quantity' | 'days_worked' | 'avg_per_day'
 type MachineSortKey = 'machine_code' | 'total_quantity' | 'record_count' | 'avg_per_day'
 
-function todayStr() {
-  return new Date().toISOString().slice(0, 10)
-}
-function weekStart() {
+const THAI_MONTHS = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+  'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม']
+const THAI_MONTHS_SHORT = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
+  'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
+
+function todayParts() {
   const d = new Date()
-  d.setDate(d.getDate() - d.getDay() + 1)
-  return d.toISOString().slice(0, 10)
-}
-function monthStart() {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
-}
-function monthEnd() {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-31`
+  return { year: d.getFullYear(), month: d.getMonth() + 1 }
 }
 
 export default function ProductionDashboardPage() {
@@ -39,9 +32,10 @@ export default function ProductionDashboardPage() {
   const router = useRouter()
   const canManage = user?.role === 'admin' || user?.role === 'manager'
 
-  const [dateFrom, setDateFrom] = useState(monthStart())
-  const [dateTo, setDateTo] = useState(monthEnd())
-  const [activeRange, setActiveRange] = useState<'today' | 'week' | 'month' | 'custom'>('month')
+  const now = todayParts()
+  const [selYear, setSelYear] = useState(now.year)
+  const [selMonth, setSelMonth] = useState(now.month)
+  const [viewMode, setViewMode] = useState<'month' | 'today'>('month')
   const [summary, setSummary] = useState<SummaryData | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -57,12 +51,19 @@ export default function ProductionDashboardPage() {
   const fetchSummary = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/production/summary?date_from=${dateFrom}&date_to=${dateTo}`)
+      let url: string
+      if (viewMode === 'today') {
+        const today = new Date().toISOString().slice(0, 10)
+        url = `/api/production/summary?date_from=${today}&date_to=${today}`
+      } else {
+        url = `/api/production/summary?year=${selYear}&month=${selMonth}`
+      }
+      const res = await fetch(url)
       if (res.ok) setSummary(await res.json())
     } finally {
       setLoading(false)
     }
-  }, [dateFrom, dateTo])
+  }, [selYear, selMonth, viewMode])
 
   useEffect(() => {
     if (canManage) fetchSummary()
@@ -70,12 +71,31 @@ export default function ProductionDashboardPage() {
 
   if (userLoading || !canManage) return null
 
-  // Quick range buttons
-  function setRange(from: string, to: string, range: 'today' | 'week' | 'month') {
-    setDateFrom(from)
-    setDateTo(to)
-    setActiveRange(range)
+  function prevMonth() {
+    if (selMonth === 1) { setSelYear(y => y - 1); setSelMonth(12) }
+    else setSelMonth(m => m - 1)
+    setViewMode('month')
   }
+  function nextMonth() {
+    const isCurrentOrFuture = selYear > now.year || (selYear === now.year && selMonth >= now.month)
+    if (isCurrentOrFuture) return
+    if (selMonth === 12) { setSelYear(y => y + 1); setSelMonth(1) }
+    else setSelMonth(m => m + 1)
+    setViewMode('month')
+  }
+  function goToday() {
+    setViewMode('today')
+  }
+  function goThisMonth() {
+    setSelYear(now.year); setSelMonth(now.month); setViewMode('month')
+  }
+
+  const isThisMonth = selYear === now.year && selMonth === now.month && viewMode === 'month'
+  const isToday = viewMode === 'today'
+  const isNextDisabled = selYear > now.year || (selYear === now.year && selMonth >= now.month)
+
+  // Year options: 3 years back to current year
+  const yearOptions = Array.from({ length: 4 }, (_, i) => now.year - 3 + i)
 
   // Stats
   const numDays = summary?.byDate.length ?? 0
@@ -148,26 +168,92 @@ export default function ProductionDashboardPage() {
         </div>
       </div>
 
-      {/* Date range filter */}
-      <div className="card">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium text-gray-600">ช่วงเวลา:</span>
-          {([
-            { key: 'today' as const, label: 'วันนี้', from: todayStr(), to: todayStr() },
-            { key: 'week' as const, label: 'สัปดาห์นี้', from: weekStart(), to: todayStr() },
-            { key: 'month' as const, label: 'เดือนนี้', from: monthStart(), to: monthEnd() },
-          ]).map(({ key, label, from, to }) => (
+      {/* ── Month / Year Filter ── */}
+      <div className="card !p-3 sm:!p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+
+          {/* Month navigator */}
+          <div className="flex items-center gap-2 flex-1">
             <button
-              key={key}
-              className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${activeRange === key ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-600'}`}
-              onClick={() => setRange(from, to, key)}
-            >{label}</button>
-          ))}
-          <div className="flex items-center gap-1.5 ml-auto">
-            <input type="date" className="!w-auto text-sm" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setActiveRange('custom') }} />
-            <span className="text-gray-400 text-sm">ถึง</span>
-            <input type="date" className="!w-auto text-sm" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setActiveRange('custom') }} />
+              onClick={prevMonth}
+              className="w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 transition-colors shadow-sm flex-shrink-0"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+
+            <div className="flex items-center gap-2 flex-1 bg-white border border-gray-200 rounded-2xl px-4 py-2 shadow-sm">
+              {/* Month dropdown */}
+              <select
+                value={selMonth}
+                onChange={e => { setSelMonth(Number(e.target.value)); setViewMode('month') }}
+                className="font-semibold text-gray-800 bg-transparent border-none outline-none cursor-pointer text-sm sm:text-base flex-1"
+              >
+                {THAI_MONTHS.slice(1).map((name, i) => (
+                  <option key={i + 1} value={i + 1}>{name}</option>
+                ))}
+              </select>
+
+              {/* Year dropdown */}
+              <select
+                value={selYear}
+                onChange={e => { setSelYear(Number(e.target.value)); setViewMode('month') }}
+                className="font-semibold text-blue-700 bg-transparent border-none outline-none cursor-pointer text-sm sm:text-base"
+              >
+                {yearOptions.map(y => (
+                  <option key={y} value={y}>{y + 543}</option>
+                ))}
+              </select>
+
+              {isToday && (
+                <span className="text-xs font-semibold text-white bg-blue-500 px-2 py-0.5 rounded-lg flex-shrink-0">วันนี้</span>
+              )}
+            </div>
+
+            <button
+              onClick={nextMonth}
+              disabled={isNextDisabled}
+              className="w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 transition-colors shadow-sm flex-shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
           </div>
+
+          {/* Quick shortcuts */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={goThisMonth}
+              className={`px-3 py-1.5 text-sm rounded-xl border transition-colors font-medium ${isThisMonth ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-600 bg-white'}`}
+            >เดือนนี้</button>
+            <button
+              onClick={goToday}
+              className={`px-3 py-1.5 text-sm rounded-xl border transition-colors font-medium ${isToday ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-600 bg-white'}`}
+            >วันนี้</button>
+          </div>
+        </div>
+
+        {/* Month pills for quick jump */}
+        <div className="flex gap-1.5 mt-3 flex-wrap">
+          {THAI_MONTHS_SHORT.slice(1).map((name, i) => {
+            const m = i + 1
+            const isActive = viewMode === 'month' && selMonth === m
+            const isFuture = selYear > now.year || (selYear === now.year && m > now.month)
+            return (
+              <button
+                key={m}
+                disabled={isFuture}
+                onClick={() => { setSelMonth(m); setViewMode('month') }}
+                className={`px-2.5 py-1 text-xs rounded-lg border transition-colors font-medium
+                  ${isActive ? 'bg-blue-600 text-white border-blue-600' : ''}
+                  ${!isActive && !isFuture ? 'border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-600 bg-white' : ''}
+                  ${isFuture ? 'border-gray-100 text-gray-300 bg-gray-50 cursor-not-allowed' : ''}
+                `}
+              >{name}</button>
+            )
+          })}
         </div>
       </div>
 
