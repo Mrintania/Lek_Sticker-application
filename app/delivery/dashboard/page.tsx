@@ -138,7 +138,7 @@ export default function DeliveryDashboardPage() {
       {!fetching && summary && (
         <>
           {/* ── Stat Cards ── */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             {/* Total Quantity */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5">
               <div className="flex items-center gap-3 mb-3">
@@ -157,24 +157,6 @@ export default function DeliveryDashboardPage() {
               </div>
               <p className="text-3xl font-bold text-blue-600">{summary.totalDays}</p>
               <p className="text-xs text-gray-400 mt-1">วัน</p>
-            </div>
-
-            {/* Top model */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center text-lg flex-shrink-0">🏆</div>
-                <p className="text-sm text-gray-500 font-medium">รุ่นที่ส่งมากสุด</p>
-              </div>
-              {summary.topModel ? (
-                <>
-                  <p className="text-lg font-bold text-purple-600 truncate">{summary.topModel}</p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {summary.byModel[0]?.total_quantity.toLocaleString()} ชิ้น
-                  </p>
-                </>
-              ) : (
-                <p className="text-2xl font-bold text-gray-300">—</p>
-              )}
             </div>
           </div>
 
@@ -217,71 +199,43 @@ export default function DeliveryDashboardPage() {
                 )}
               </div>
 
-              {/* ── Model Breakdown ── */}
-              {summary.byModel.length > 0 && (
+              {/* ── Daily Records Table ── */}
+              {summary.byDate.length > 0 && (
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5">
                   <h3 className="font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-purple-500 inline-block" />
-                    สรุปรายรุ่น
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                    รายการส่งรายวัน
                   </h3>
                   <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
-                    <table className="w-full text-sm min-w-[320px]">
+                    <table className="w-full text-sm min-w-[240px]">
                       <thead>
                         <tr className="border-b border-gray-100">
-                          <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wider pb-2.5">#</th>
-                          <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wider pb-2.5">รุ่น / สินค้า</th>
-                          <th className="text-right text-xs font-semibold text-gray-400 uppercase tracking-wider pb-2.5">จำนวนวัน</th>
-                          <th className="text-right text-xs font-semibold text-gray-400 uppercase tracking-wider pb-2.5">รวม (ชิ้น)</th>
+                          <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wider pb-2.5">วันที่</th>
+                          <th className="text-right text-xs font-semibold text-gray-400 uppercase tracking-wider pb-2.5">จำนวน (ชิ้น)</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {summary.byModel.map((m, i) => (
-                          <tr key={m.model_name} className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
-                            <td className="py-2.5 text-gray-400 text-xs w-6">{i + 1}</td>
-                            <td className="py-2.5 font-medium text-gray-800">{m.model_name}</td>
-                            <td className="py-2.5 text-right text-gray-500">{m.record_count}</td>
-                            <td className="py-2.5 text-right font-bold text-emerald-700">{m.total_quantity.toLocaleString()}</td>
-                          </tr>
-                        ))}
+                        {[...summary.byDate].reverse().map(d => {
+                          const [y, m, day] = d.date.split('-')
+                          const thaiMonths = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
+                          const thaiDays = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.']
+                          const dateObj = new Date(d.date + 'T00:00:00')
+                          const label = `${thaiDays[dateObj.getDay()]} ${Number(day)} ${thaiMonths[Number(m)]} ${Number(y) + 543}`
+                          return (
+                            <tr key={d.date} className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
+                              <td className="py-2.5 text-gray-700">{label}</td>
+                              <td className="py-2.5 text-right font-bold text-emerald-700">{d.total_quantity.toLocaleString()}</td>
+                            </tr>
+                          )
+                        })}
                       </tbody>
                       <tfoot>
                         <tr className="border-t-2 border-gray-200">
-                          <td colSpan={3} className="pt-2.5 text-xs font-semibold text-gray-400">รวมทั้งหมด</td>
-                          <td className="pt-2.5 text-right font-bold text-emerald-700">
-                            {summary.grandTotal.toLocaleString()}
-                          </td>
+                          <td className="pt-2.5 text-xs font-semibold text-gray-400">รวมทั้งหมด</td>
+                          <td className="pt-2.5 text-right font-bold text-emerald-700">{summary.grandTotal.toLocaleString()}</td>
                         </tr>
                       </tfoot>
                     </table>
-                  </div>
-                </div>
-              )}
-
-              {/* ── Destination Breakdown (only if data exists) ── */}
-              {summary.byDestination.length > 0 && !(summary.byDestination.length === 1 && summary.byDestination[0].destination === 'ไม่ระบุ') && (
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5">
-                  <h3 className="font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
-                    สรุปตามปลายทาง
-                  </h3>
-                  <div className="space-y-2">
-                    {summary.byDestination.map(d => {
-                      const pct = summary.grandTotal > 0 ? Math.round(d.total_quantity / summary.grandTotal * 100) : 0
-                      return (
-                        <div key={d.destination}>
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm text-gray-700 font-medium">{d.destination}</span>
-                            <span className="text-sm font-bold text-gray-800">{d.total_quantity.toLocaleString()} <span className="text-xs text-gray-400 font-normal">ชิ้น ({pct}%)</span></span>
-                          </div>
-                          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-blue-400 rounded-full transition-all"
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                        </div>
-                      )
-                    })}
                   </div>
                 </div>
               )}

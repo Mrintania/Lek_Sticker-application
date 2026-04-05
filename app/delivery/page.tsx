@@ -324,44 +324,27 @@ export default function DeliveryPage() {
 
         <div className="px-4 py-3 space-y-3">
           {/* Column headers — desktop only */}
-          <div className="hidden sm:grid gap-2 px-0.5 text-xs text-gray-400" style={{ gridTemplateColumns: '1fr 7rem 9rem 1.75rem' }}>
-            <span>ชื่อรุ่น / สินค้า</span>
+          <div className="hidden sm:grid gap-2 px-0.5 text-xs text-gray-400" style={{ gridTemplateColumns: '1fr 1.75rem' }}>
             <span className="text-right">จำนวน (ชิ้น)</span>
-            <span>ปลายทาง</span>
             <span />
           </div>
 
           {/* Item rows */}
           <div className="space-y-2">
             {itemEdits.map((item, idx) => (
-              <div key={idx} className="flex flex-col sm:grid sm:items-center gap-2"
-                style={{ gridTemplateColumns: '1fr 7rem 9rem 1.75rem' }}>
-                <input
-                  type="text"
-                  placeholder="ชื่อรุ่น / สินค้า"
-                  className="text-sm border border-gray-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-emerald-300 focus:border-emerald-400 outline-none w-full transition-all"
-                  value={item.model_name}
-                  onChange={e => updateItem(idx, 'model_name', e.target.value)}
-                />
+              <div key={idx} className="flex items-center gap-2">
                 <input
                   type="number"
                   placeholder="0"
                   min={0}
-                  className="text-sm border border-gray-200 rounded-xl px-3 py-2 text-right focus:ring-2 focus:ring-emerald-300 focus:border-emerald-400 outline-none w-full transition-all"
+                  className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2 text-right focus:ring-2 focus:ring-emerald-300 focus:border-emerald-400 outline-none w-full transition-all"
                   value={item.quantity}
                   onChange={e => updateItem(idx, 'quantity', e.target.value)}
-                />
-                <input
-                  type="text"
-                  placeholder="ปลายทาง (ไม่บังคับ)"
-                  className="text-sm border border-gray-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-emerald-300 focus:border-emerald-400 outline-none w-full transition-all"
-                  value={item.destination}
-                  onChange={e => updateItem(idx, 'destination', e.target.value)}
                 />
                 <button
                   onClick={() => removeRow(idx)}
                   disabled={itemEdits.length === 1}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed self-center"
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
