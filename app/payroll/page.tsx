@@ -6,6 +6,8 @@ import { exportMonthlyReport } from '@/lib/exporter'
 import { MonthlySummary, AttendanceRecord, AttendanceStatus } from '@/lib/types'
 import { SortIcon } from '@/components/shared/SortIcon'
 import StatusBadge from '@/components/shared/StatusBadge'
+import { THAI_BANKS, getBankById } from '@/lib/banks'
+import { PaymentMethod, PAYMENT_METHOD_LABELS, PAYMENT_METHOD_ICONS } from '@/lib/types'
 
 interface PayrollRecord {
   id: number
@@ -31,6 +33,18 @@ interface PayrollRecord {
   extra_deduction_note: string | null
   total_pay: number
   is_finalized: number
+  // Payment tracking
+  payment_status: 'pending' | 'paid'
+  payment_method: PaymentMethod | null
+  payment_note: string | null
+  paid_at: string | null
+  paid_by: string | null
+  // Employee bank info (joined from employees)
+  phone: string | null
+  bank_name: string | null
+  bank_account_number: string | null
+  bank_account_name: string | null
+  prompt_pay_id: string | null
 }
 
 interface AdjustmentModal {
@@ -92,6 +106,18 @@ export default function PayrollPage() {
   const [adjAmount, setAdjAmount] = useState('')
   const [adjNote, setAdjNote] = useState('')
   const [savingAdj, setSavingAdj] = useState(false)
+
+  // Payment modal
+  const [paymentModal, setPaymentModal] = useState<PayrollRecord | null>(null)
+  const [payMethod, setPayMethod] = useState<PaymentMethod>('cash')
+  const [payNote, setPayNote] = useState('')
+  const [savingPayment, setSavingPayment] = useState(false)
+  // Bulk pay
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [bulkPaying, setBulkPaying] = useState(false)
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false)
+  // Payment filter
+  const [payFilter, setPayFilter] = useState<'all' | 'pending' | 'paid'>('all')
 
   // Calculate confirm dialog
   const [showCalcConfirm, setShowCalcConfirm] = useState(false)
@@ -274,6 +300,56 @@ export default function PayrollPage() {
     setTimeout(() => setSaveMsg(''), 2000)
   }
 
+  function openPaymentModal(r: PayrollRecord) {
+    setPaymentModal(r)
+    if (r.prompt_pay_id) setPayMethod('promptpay')
+    else if (r.bank_account_number) setPayMethod('bank_transfer')
+    else setPayMethod('cash')
+    setPayNote('')
+  }
+
+  async function handleConfirmPayment() {
+    if (!paymentModal) return
+    setSavingPayment(true)
+    try {
+      await fetch(`/api/payroll/${paymentModal.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          payment_status: 'paid',
+          payment_method: payMethod,
+          payment_note: payNote || null,
+        }),
+      })
+      setPaymentModal(null)
+      setSelectedIds(prev => { const n = new Set(prev); n.delete(paymentModal.id); return n })
+      await loadPayroll()
+    } finally {
+      setSavingPayment(false)
+    }
+  }
+
+  async function handleBulkPay() {
+    if (selectedIds.size === 0) return
+    setBulkPaying(true)
+    try {
+      await Promise.all(
+        [...selectedIds].map(id =>
+          fetch(`/api/payroll/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ payment_status: 'paid', payment_method: 'cash' }),
+          })
+        )
+      )
+      setSelectedIds(new Set())
+      setShowBulkConfirm(false)
+      await loadPayroll()
+    } finally {
+      setBulkPaying(false)
+    }
+  }
+
   async function handleSaveDailyRate() {
     if (!dailyRateModal) return
     const rate = Number(newDailyRate)
@@ -373,6 +449,25 @@ export default function PayrollPage() {
     extraDeduction: s.extraDeduction + (r.extra_deduction ?? 0),
     totalPay: s.totalPay + r.total_pay,
   }), { basePay: 0, bonus: 0, extraBonus: 0, extraDeduction: 0, totalPay: 0 })
+
+  const pendingRecords = records.filter(r => r.payment_status === 'pending')
+  const paidRecords    = records.filter(r => r.payment_status === 'paid')
+  const pendingTotal   = pendingRecords.reduce((s, r) => {
+    const extraB = r.extra_bonus ?? 0
+    const extraD = r.extra_deduction ?? 0
+    return s + r.base_pay + r.diligence_bonus + extraB - extraD
+  }, 0)
+  const paidTotal = paidRecords.reduce((s, r) => {
+    const extraB = r.extra_bonus ?? 0
+    const extraD = r.extra_deduction ?? 0
+    return s + r.base_pay + r.diligence_bonus + extraB - extraD
+  }, 0)
+
+  const filteredRecords = sortedRecords.filter(r => {
+    if (payFilter === 'pending') return r.payment_status === 'pending'
+    if (payFilter === 'paid')    return r.payment_status === 'paid'
+    return true
+  })
 
   const months = Array.from({ length: 12 }, (_, i) => i + 1)
   const years = [2024, 2025, 2026, 2027]
@@ -744,6 +839,28 @@ export default function PayrollPage() {
         </div>
       )}
 
+      {/* ── Payment Summary Bar ── */}
+      {records.length > 0 && (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
+            <div className="w-9 h-9 bg-amber-100 rounded-xl flex items-center justify-center text-lg flex-shrink-0">⏳</div>
+            <div>
+              <p className="text-xs text-amber-700 font-medium">รอจ่าย</p>
+              <p className="text-base font-bold text-amber-800">{pendingRecords.length} คน</p>
+              <p className="text-xs text-amber-600">{formatCurrency(pendingTotal)}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-2xl px-4 py-3">
+            <div className="w-9 h-9 bg-green-100 rounded-xl flex items-center justify-center text-lg flex-shrink-0">✅</div>
+            <div>
+              <p className="text-xs text-green-700 font-medium">จ่ายแล้ว</p>
+              <p className="text-base font-bold text-green-800">{paidRecords.length} คน</p>
+              <p className="text-xs text-green-600">{formatCurrency(paidTotal)}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Summary Cards */}
       {records.length > 0 && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -768,6 +885,62 @@ export default function PayrollPage() {
         </div>
       )}
 
+      {/* ── Payment Filter + Bulk Action ── */}
+      {records.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Filter toggle */}
+          <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+            {([
+              { key: 'all',     label: 'ทั้งหมด',   count: records.length },
+              { key: 'pending', label: 'รอจ่าย',    count: pendingRecords.length },
+              { key: 'paid',    label: 'จ่ายแล้ว',  count: paidRecords.length },
+            ] as const).map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setPayFilter(tab.key)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  payFilter === tab.key ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {tab.label}
+                <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                  payFilter === tab.key ? 'bg-gray-100 text-gray-600' : 'bg-gray-200 text-gray-500'
+                }`}>{tab.count}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Bulk Action Bar ── */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3">
+          <div className="w-8 h-8 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-blue-800">
+              เลือก {selectedIds.size} คน &mdash; {formatCurrency(
+                records.filter(r => selectedIds.has(r.id)).reduce((s, r) => {
+                  const extraB = r.extra_bonus ?? 0
+                  const extraD = r.extra_deduction ?? 0
+                  return s + r.base_pay + r.diligence_bonus + extraB - extraD
+                }, 0)
+              )}
+            </p>
+            <p className="text-xs text-blue-600">จ่ายเงินสดพร้อมกัน</p>
+          </div>
+          <div className="flex gap-2 flex-shrink-0">
+            <button onClick={() => setSelectedIds(new Set())} className="btn-secondary text-sm !py-1.5">ยกเลิก</button>
+            <button onClick={() => setShowBulkConfirm(true)} disabled={bulkPaying} className="btn-primary text-sm !py-1.5">
+              💵 จ่ายที่เลือก ({selectedIds.size})
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Payroll Table */}
       <div className="card !p-0 overflow-hidden">
         {records.length === 0 ? (
@@ -781,6 +954,20 @@ export default function PayrollPage() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead><tr>
+                {canManage && (
+                  <th className="table-header w-10">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.size > 0 && selectedIds.size === pendingRecords.filter(r => filteredRecords.includes(r)).length}
+                      onChange={e => {
+                        const visiblePending = filteredRecords.filter(r => r.payment_status === 'pending')
+                        if (e.target.checked) setSelectedIds(new Set(visiblePending.map(r => r.id)))
+                        else setSelectedIds(new Set())
+                      }}
+                      className="w-4 h-4 rounded cursor-pointer"
+                    />
+                  </th>
+                )}
                 {([
                   { key: 'name', label: 'ชื่อ', cls: '' },
                   { key: 'employmentType', label: 'ประเภท', cls: 'text-center' },
@@ -802,12 +989,30 @@ export default function PayrollPage() {
                   </th>
                 ))}
                 {canManage && <th className="table-header text-center">ปรับ</th>}
+                <th className="table-header text-center whitespace-nowrap">สถานะ</th>
               </tr></thead>
               <tbody>
-                {sortedRecords.map((r) => {
+                {filteredRecords.map((r) => {
                   const switchedToDaily = r.employment_type === 'monthly' && r.days_absent > paySettings.monthlyMaxAbsent
                   return (
                     <tr key={r.employee_id} className="hover:bg-gray-50">
+                      {canManage && (
+                        <td className="table-cell w-10">
+                          {r.payment_status === 'pending' && (
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.has(r.id)}
+                              onChange={e => {
+                                const next = new Set(selectedIds)
+                                if (e.target.checked) next.add(r.id)
+                                else next.delete(r.id)
+                                setSelectedIds(next)
+                              }}
+                              className="w-4 h-4 rounded cursor-pointer"
+                            />
+                          )}
+                        </td>
+                      )}
                       <td className="table-cell">
                         <div className="flex items-center gap-2.5">
                           <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-bold flex-shrink-0">
@@ -910,10 +1115,52 @@ export default function PayrollPage() {
                           </div>
                         </td>
                       )}
+                      <td className="table-cell">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {r.payment_status === 'paid' ? (
+                            <>
+                              <span
+                                className="inline-flex items-center gap-1 text-xs font-medium bg-green-100 text-green-700 px-2.5 py-1 rounded-full"
+                                title={r.paid_at ? `จ่ายโดย ${r.paid_by ?? ''} เมื่อ ${new Date(r.paid_at).toLocaleDateString('th-TH')}` : undefined}
+                              >
+                                {r.payment_method ? PAYMENT_METHOD_ICONS[r.payment_method] : '✅'} จ่ายแล้ว
+                              </span>
+                              {canManage && (
+                                <button
+                                  onClick={() => {
+                                    fetch(`/api/payroll/${r.id}`, {
+                                      method: 'PATCH',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ payment_status: 'pending' }),
+                                    }).then(() => loadPayroll())
+                                  }}
+                                  className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+                                  title="ยกเลิกการจ่าย"
+                                >✕</button>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <span className="inline-flex items-center gap-1 text-xs font-medium bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full">
+                                ⏳ รอจ่าย
+                              </span>
+                              {canManage && (
+                                <button
+                                  onClick={() => openPaymentModal(r)}
+                                  className="text-xs bg-blue-600 text-white px-2.5 py-1 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                                >
+                                  จ่าย
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   )
                 })}
                 <tr className="bg-blue-50 font-bold">
+                  {canManage && <td className="table-cell" />}
                   <td className="table-cell" colSpan={9}>รวมทั้งหมด</td>
                   <td className="table-cell text-right text-blue-700">{formatCurrency(totals.basePay)}</td>
                   <td className="table-cell text-right text-green-700">{formatCurrency(totals.bonus)}</td>
@@ -926,6 +1173,7 @@ export default function PayrollPage() {
                     <p className="font-semibold text-purple-700">{formatCurrency(totals.basePay + totals.bonus + totals.extraBonus - totals.extraDeduction)}</p>
                   </td>
                   {canManage && <td className="table-cell" />}
+                  <td className="table-cell" />
                 </tr>
               </tbody>
             </table>
@@ -940,6 +1188,150 @@ export default function PayrollPage() {
           กำลังคำนวณเงินเดือน...
         </div>
       )}
+      {/* ── Payment Modal ── */}
+      {paymentModal && (
+        <div className="modal-backdrop" onClick={() => setPaymentModal(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <h3 className="font-bold text-gray-900">บันทึกการจ่ายเงิน</h3>
+              <button onClick={() => setPaymentModal(null)} className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {/* Employee info */}
+              <div className="flex items-center gap-3 bg-gray-50 rounded-2xl p-3">
+                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold flex-shrink-0">
+                  {paymentModal.name.charAt(0)}
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-800">{paymentModal.name}</p>
+                  <p className="text-lg font-bold text-green-600">
+                    {formatCurrency(paymentModal.base_pay + paymentModal.diligence_bonus + (paymentModal.extra_bonus ?? 0) - (paymentModal.extra_deduction ?? 0))}
+                  </p>
+                </div>
+              </div>
+
+              {/* Method selector */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">วิธีการจ่าย</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['cash', 'bank_transfer', 'promptpay'] as const).map(m => (
+                    <button
+                      key={m}
+                      onClick={() => setPayMethod(m)}
+                      className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border-2 text-sm font-medium transition-colors ${
+                        payMethod === m
+                          ? 'border-blue-500 bg-blue-50 text-blue-700'
+                          : 'border-gray-200 text-gray-500 hover:border-gray-300 bg-white'
+                      }`}
+                    >
+                      <span className="text-xl">{PAYMENT_METHOD_ICONS[m]}</span>
+                      <span className="text-xs text-center leading-tight">{PAYMENT_METHOD_LABELS[m]}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Bank details */}
+              {payMethod === 'bank_transfer' && (
+                <div className="bg-gray-50 rounded-xl p-3 space-y-1.5 text-sm">
+                  {paymentModal.bank_name ? (
+                    <>
+                      {(() => {
+                        const bank = getBankById(paymentModal.bank_name)
+                        return bank ? (
+                          <span className="inline-block px-2.5 py-0.5 rounded-lg text-xs font-bold mb-1" style={{ backgroundColor: bank.bgColor, color: bank.color }}>
+                            {bank.shortName} · {bank.name}
+                          </span>
+                        ) : <span className="text-xs text-gray-500">{paymentModal.bank_name}</span>
+                      })()}
+                      <p className="text-gray-600">เลขบัญชี: <span className="font-mono font-semibold text-gray-800">{paymentModal.bank_account_number ?? '—'}</span></p>
+                      <p className="text-gray-600">ชื่อบัญชี: <span className="font-semibold text-gray-800">{paymentModal.bank_account_name ?? '—'}</span></p>
+                    </>
+                  ) : (
+                    <p className="text-gray-400 text-xs italic text-center py-2">ไม่มีข้อมูลบัญชีธนาคาร<br/>กรอกข้อมูลได้ที่หน้าจัดการพนักงาน</p>
+                  )}
+                </div>
+              )}
+
+              {/* PromptPay details */}
+              {payMethod === 'promptpay' && (
+                <div className="bg-gray-50 rounded-xl p-3 text-sm">
+                  {paymentModal.prompt_pay_id ? (
+                    <p className="text-gray-600">PromptPay: <span className="font-mono font-semibold text-gray-800">{paymentModal.prompt_pay_id}</span></p>
+                  ) : (
+                    <p className="text-gray-400 text-xs italic text-center py-2">ไม่มีข้อมูล PromptPay<br/>กรอกข้อมูลได้ที่หน้าจัดการพนักงาน</p>
+                  )}
+                </div>
+              )}
+
+              {/* Note */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">หมายเหตุ (ไม่บังคับ)</label>
+                <input
+                  type="text"
+                  value={payNote}
+                  onChange={e => setPayNote(e.target.value)}
+                  className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-300 focus:border-blue-400 outline-none transition-all"
+                  placeholder="เช่น โอนเข้าบัญชีเรียบร้อย"
+                />
+              </div>
+            </div>
+
+            <div className="px-5 pb-5 flex gap-2 justify-end">
+              <button onClick={() => setPaymentModal(null)} className="btn-secondary">ยกเลิก</button>
+              <button
+                onClick={handleConfirmPayment}
+                disabled={savingPayment}
+                className="btn-primary flex items-center gap-2"
+              >
+                {savingPayment ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    กำลังบันทึก...
+                  </>
+                ) : `✅ ยืนยันการจ่าย`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Bulk Pay Confirm Dialog ── */}
+      {showBulkConfirm && (
+        <div className="modal-backdrop" onClick={() => setShowBulkConfirm(false)}>
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4 flex flex-col gap-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start gap-4">
+              <div className="w-11 h-11 rounded-xl bg-blue-100 flex items-center justify-center text-xl flex-shrink-0">💵</div>
+              <div>
+                <p className="font-bold text-gray-900">ยืนยันจ่ายเงินสด</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  จ่ายเงินสดให้ <span className="font-semibold text-gray-700">{selectedIds.size} คน</span> รวม{' '}
+                  <span className="font-semibold text-green-600">
+                    {formatCurrency(records.filter(r => selectedIds.has(r.id)).reduce((s, r) => {
+                      return s + r.base_pay + r.diligence_bonus + (r.extra_bonus ?? 0) - (r.extra_deduction ?? 0)
+                    }, 0))}
+                  </span>
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setShowBulkConfirm(false)} className="btn-secondary">ยกเลิก</button>
+              <button onClick={handleBulkPay} disabled={bulkPaying} className="btn-primary flex items-center gap-2">
+                {bulkPaying ? '⏳ กำลังบันทึก...' : `✅ ยืนยัน (${selectedIds.size} คน)`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Employee Detail Modal */}
       {detailRecord && (
         <div className="modal-backdrop">

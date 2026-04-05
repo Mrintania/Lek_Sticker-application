@@ -31,11 +31,13 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   db.prepare(`UPDATE employees SET
     name = ?, nickname = ?, department = ?, employment_type = ?,
     daily_rate = ?, monthly_salary = ?, start_date = ?, is_active = ?,
+    phone = ?, bank_name = ?, bank_account_number = ?, bank_account_name = ?, prompt_pay_id = ?,
     updated_at = datetime('now')
     WHERE employee_id = ?`).run(
     body.name, body.nickname || null, body.department || null, body.employmentType,
     body.dailyRate || null, body.monthlySalary || null, body.startDate || null,
     body.isActive !== false ? 1 : 0,
+    body.phone || null, body.bankName || null, body.bankAccountNumber || null, body.bankAccountName || null, body.promptPayId || null,
     id
   )
   logAudit(db, user.username, 'employee.update', 'employee', id, {

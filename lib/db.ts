@@ -50,6 +50,17 @@ export function getDb(): Database.Database {
       `CREATE INDEX IF NOT EXISTS idx_payroll_records_employee_id ON payroll_records(employee_id)`,
       `CREATE INDEX IF NOT EXISTS idx_payroll_records_period ON payroll_records(year, month, period)`,
       `CREATE INDEX IF NOT EXISTS idx_attendance_overrides_employee_id ON attendance_overrides(employee_id)`,
+      `ALTER TABLE employees ADD COLUMN phone TEXT`,
+      `ALTER TABLE employees ADD COLUMN bank_name TEXT`,
+      `ALTER TABLE employees ADD COLUMN bank_account_number TEXT`,
+      `ALTER TABLE employees ADD COLUMN bank_account_name TEXT`,
+      `ALTER TABLE employees ADD COLUMN prompt_pay_id TEXT`,
+      `ALTER TABLE payroll_records ADD COLUMN payment_status TEXT NOT NULL DEFAULT 'pending'`,
+      `ALTER TABLE payroll_records ADD COLUMN payment_method TEXT`,
+      `ALTER TABLE payroll_records ADD COLUMN payment_note TEXT`,
+      `ALTER TABLE payroll_records ADD COLUMN paid_at TEXT`,
+      `ALTER TABLE payroll_records ADD COLUMN paid_by TEXT`,
+      `CREATE INDEX IF NOT EXISTS idx_payroll_records_payment_status ON payroll_records(payment_status)`,
     ]
     for (const sql of migrations) {
       try { db.exec(sql) } catch {}

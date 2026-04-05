@@ -61,6 +61,11 @@ export interface EmployeeProfile {
   monthlySalary?: number
   startDate?: string
   isActive: boolean
+  phone?: string
+  bankName?: string
+  bankAccountNumber?: string
+  bankAccountName?: string
+  promptPayId?: string
 }
 
 export interface WorkSettings {
@@ -136,6 +141,22 @@ export interface WeeklySummary {
   totalWorkHours: number
   avgWorkHours: number
   weekDates: string[] // list of work dates in the week
+}
+
+// ── Payment ──────────────────────────────────────────────────────────────────
+export type PaymentStatus = 'pending' | 'paid'
+export type PaymentMethod = 'cash' | 'bank_transfer' | 'promptpay'
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  cash: 'เงินสด',
+  bank_transfer: 'โอน-ธนาคาร',
+  promptpay: 'โอน-PromptPay',
+}
+
+export const PAYMENT_METHOD_ICONS: Record<PaymentMethod, string> = {
+  cash: '💵',
+  bank_transfer: '🏦',
+  promptpay: '📱',
 }
 
 export interface MonthlySummary {
