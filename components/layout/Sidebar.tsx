@@ -37,6 +37,8 @@ const bottomItems: NavItem[] = [
   { href: '/payroll', label: 'เงินเดือน', icon: '💰', roles: ['admin', 'manager'] },
   { href: '/production', label: 'บันทึกงานผลิต', icon: '🖨️', roles: ['admin', 'manager'] },
   { href: '/production/dashboard', label: 'Dashboard ผลผลิต', icon: '📦', roles: ['admin', 'manager'] },
+  { href: '/delivery', label: 'บันทึกงานส่ง', icon: '🚚', roles: ['admin', 'manager'] },
+  { href: '/delivery/dashboard', label: 'Dashboard งานส่ง', icon: '📬', roles: ['admin', 'manager'] },
   { href: '/employees', label: 'จัดการพนักงาน', icon: '👥', roles: ['admin', 'manager'] },
   { href: '/admin/users', label: 'จัดการผู้ใช้', icon: '🔑', roles: ['admin'] },
   { href: '/admin/audit', label: 'บันทึกการใช้งาน', icon: '🔍', roles: ['admin'] },

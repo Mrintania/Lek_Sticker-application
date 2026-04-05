@@ -36,6 +36,9 @@ export type AuditAction =
   | 'evaluation.update'
   | 'evaluation.approve'
   | 'payroll.payment'
+  | 'delivery.record'
+  | 'delivery.update'
+  | 'delivery.delete'
 
 export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   'auth.login': 'เข้าสู่ระบบ',
@@ -73,6 +76,9 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   'evaluation.update': 'แก้ไขการประเมิน',
   'evaluation.approve': 'อนุมัติการประเมิน',
   'payroll.payment': 'จ่ายเงินเดือน',
+  'delivery.record': 'บันทึกงานส่ง',
+  'delivery.update': 'แก้ไขงานส่ง',
+  'delivery.delete': 'ลบงานส่ง',
 }
 
 export const AUDIT_ACTION_COLORS: Record<AuditAction, string> = {
@@ -111,6 +117,9 @@ export const AUDIT_ACTION_COLORS: Record<AuditAction, string> = {
   'evaluation.update': 'bg-violet-100 text-violet-700',
   'evaluation.approve': 'bg-violet-100 text-violet-700',
   'payroll.payment': 'bg-green-100 text-green-700',
+  'delivery.record': 'bg-emerald-100 text-emerald-700',
+  'delivery.update': 'bg-emerald-100 text-emerald-700',
+  'delivery.delete': 'bg-red-100 text-red-700',
 }
 
 export function logAudit(

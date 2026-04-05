@@ -61,6 +61,26 @@ export function getDb(): Database.Database {
       `ALTER TABLE payroll_records ADD COLUMN paid_at TEXT`,
       `ALTER TABLE payroll_records ADD COLUMN paid_by TEXT`,
       `CREATE INDEX IF NOT EXISTS idx_payroll_records_payment_status ON payroll_records(payment_status)`,
+      // Delivery records tables
+      `CREATE TABLE IF NOT EXISTS delivery_records (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        date       TEXT NOT NULL UNIQUE,
+        notes      TEXT,
+        created_by TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS delivery_items (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        record_id   INTEGER NOT NULL REFERENCES delivery_records(id) ON DELETE CASCADE,
+        model_name  TEXT NOT NULL,
+        quantity    INTEGER NOT NULL CHECK(quantity > 0),
+        destination TEXT,
+        sort_order  INTEGER DEFAULT 0,
+        created_at  TEXT DEFAULT (datetime('now'))
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_delivery_records_date ON delivery_records(date)`,
+      `CREATE INDEX IF NOT EXISTS idx_delivery_items_record ON delivery_items(record_id)`,
     ]
     for (const sql of migrations) {
       try { db.exec(sql) } catch {}
