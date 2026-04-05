@@ -147,7 +147,22 @@ export default function ProductionPage() {
   useEffect(() => { loadMachines() }, [loadMachines])
   useEffect(() => { if (machines.length > 0 || selectedDate) loadDayData(selectedDate) }, [selectedDate, loadDayData])
 
-  // Fetch which dates in calendarYM have production records + holidays
+  // Fetch holidays for the current year on mount (for date bar indicator)
+  useEffect(() => {
+    const y = selectedDate.slice(0, 4)
+    fetch(`/api/holidays?year=${y}`)
+      .then(r => r.json())
+      .then((data: { date: string; name: string; is_active: number }[]) => {
+        const map = new Map<string, string>()
+        for (const h of data) {
+          if (h.is_active) map.set(h.date, h.name)
+        }
+        setHolidayDates(map)
+      })
+      .catch(() => {})
+  }, [selectedDate.slice(0, 4)]) // re-fetch only when year changes
+
+  // Fetch which dates in calendarYM have production records (calendar only)
   useEffect(() => {
     if (!showCalendar) return
     const [y, m] = calendarYM.split('-')
@@ -157,6 +172,7 @@ export default function ProductionPage() {
         setRecordedDates(new Set((data.byDate as { date: string }[]).map(d => d.date)))
       })
       .catch(() => {})
+    // Update holidays if calendar month crosses into a different year
     fetch(`/api/holidays?year=${y}`)
       .then(r => r.json())
       .then((data: { date: string; name: string; is_active: number }[]) => {
@@ -375,6 +391,10 @@ export default function ProductionPage() {
   const totalToday = Object.values(records).reduce((s, r) => s + (r.totalQuantity ?? 0), 0)
   const { day, full } = formatDateThai(selectedDate)
   const isToday = selectedDate === todayStr()
+  const selectedIsSunday = new Date(selectedDate + 'T00:00:00').getDay() === 0
+  const selectedHolidayName = holidayDates.get(selectedDate)
+  const isSelectedHoliday = selectedIsSunday || !!selectedHolidayName
+  const holidayLabel = selectedHolidayName ?? (selectedIsSunday ? 'วันอาทิตย์' : '')
 
   const thaiMonthsFull = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม']
   const calDays = buildCalendarDays(calendarYM)
@@ -435,10 +455,13 @@ export default function ProductionPage() {
         >
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-teal-600 bg-teal-50 px-2 py-0.5 rounded-lg">{day}</span>
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-lg ${isSelectedHoliday ? 'text-red-600 bg-red-50' : 'text-teal-600 bg-teal-50'}`}>{day}</span>
               <span className="font-semibold text-gray-800">{full}</span>
               {isToday && (
                 <span className="text-xs font-semibold text-white bg-teal-500 px-2 py-0.5 rounded-lg">วันนี้</span>
+              )}
+              {isSelectedHoliday && (
+                <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-lg">🏖️ {holidayLabel}</span>
               )}
             </div>
           </div>
