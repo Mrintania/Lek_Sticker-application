@@ -757,7 +757,8 @@ export default function ProductionPage() {
                 const hasRecord = recordedDates.has(dateStr)
                 const isFuture = dateStr > today
                 const holidayName = holidayDates.get(dateStr)
-                const isHoliday = !!holidayName
+                const isSunday = new Date(dateStr + 'T00:00:00').getDay() === 0
+                const isHoliday = !!holidayName || isSunday
                 return (
                   <button
                     key={dateStr}
