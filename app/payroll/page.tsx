@@ -93,6 +93,39 @@ export default function PayrollPage() {
   const [adjNote, setAdjNote] = useState('')
   const [savingAdj, setSavingAdj] = useState(false)
 
+  // Calculate confirm dialog
+  const [showCalcConfirm, setShowCalcConfirm] = useState(false)
+  const [calcScanCount, setCalcScanCount] = useState<number | null>(null)
+  const [loadingCalcConfirm, setLoadingCalcConfirm] = useState(false)
+
+  async function openCalcConfirm() {
+    setShowCalcConfirm(true)
+    setCalcScanCount(null)
+    setLoadingCalcConfirm(true)
+    try {
+      const lastDay = new Date(year, month, 0).getDate()
+      const mm = String(month).padStart(2, '0')
+      const start = period === 1 ? `${year}-${mm}-01` : `${year}-${mm}-16`
+      const end   = period === 1 ? `${year}-${mm}-15` : `${year}-${mm}-${String(lastDay).padStart(2, '0')}`
+      const res = await fetch(`/api/scans?start=${start}&end=${end}`)
+      if (res.ok) {
+        const data = await res.json()
+        setCalcScanCount(Array.isArray(data) ? data.length : 0)
+      } else {
+        setCalcScanCount(0)
+      }
+    } catch {
+      setCalcScanCount(0)
+    } finally {
+      setLoadingCalcConfirm(false)
+    }
+  }
+
+  async function confirmAndCalculate() {
+    setShowCalcConfirm(false)
+    await handleCalculate()
+  }
+
   // Employee detail modal
   const [detailRecord, setDetailRecord] = useState<PayrollRecord | null>(null)
   const [detailAttendance, setDetailAttendance] = useState<AttendanceRecord[]>([])
@@ -411,7 +444,7 @@ export default function PayrollPage() {
           {canManage && (
             <>
               <button className="btn-secondary whitespace-nowrap" onClick={() => setShowSettings(!showSettings)}>⚙️ เบี้ยขยัน</button>
-              <button className="btn-primary whitespace-nowrap" onClick={handleCalculate} disabled={loading}>
+              <button className="btn-primary whitespace-nowrap" onClick={openCalcConfirm} disabled={loading}>
                 {loading ? '⏳ คำนวณ...' : '🔄 คำนวณเงินเดือน'}
               </button>
             </>
@@ -421,6 +454,95 @@ export default function PayrollPage() {
           )}
         </div>
       </div>
+
+      {/* ── Calculate Confirmation Dialog ── */}
+      {showCalcConfirm && (
+        <div className="modal-backdrop" onClick={() => setShowCalcConfirm(false)}>
+          <div
+            className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4 flex flex-col gap-5"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-start gap-4">
+              <div className="w-11 h-11 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5 text-xl">
+                🔄
+              </div>
+              <div>
+                <p className="font-bold text-gray-900 text-base">ยืนยันการคำนวณเงินเดือน</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  {formatThaiMonthYear(year, month)} · รอบ {period} ({period === 1 ? '1–15' : '16–สิ้นเดือน'})
+                </p>
+              </div>
+            </div>
+
+            {/* Scan warning */}
+            <div className={`rounded-xl px-4 py-3 text-sm ${
+              loadingCalcConfirm
+                ? 'bg-gray-50 text-gray-400'
+                : calcScanCount && calcScanCount > 0
+                  ? 'bg-amber-50 border border-amber-200'
+                  : 'bg-green-50 border border-green-200'
+            }`}>
+              {loadingCalcConfirm ? (
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4 animate-spin text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  กำลังตรวจสอบข้อมูลลายนิ้วมือ...
+                </span>
+              ) : calcScanCount && calcScanCount > 0 ? (
+                <div className="flex items-start gap-2">
+                  <span className="text-amber-500 mt-0.5 text-base flex-shrink-0">⚠️</span>
+                  <div>
+                    <p className="font-semibold text-amber-800">พบข้อมูลลายนิ้วมือในช่วงนี้ {calcScanCount.toLocaleString()} รายการ</p>
+                    <p className="text-amber-700 mt-0.5 text-xs leading-relaxed">
+                      ข้อมูลเหล่านี้อาจยังไม่ได้ถูกนำเข้าระบบ หากคำนวณเงินเดือนตอนนี้ อาจทำให้ผลการคำนวณไม่ครบถ้วน
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <span className="flex items-center gap-2 text-green-700 font-medium">
+                  <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  ไม่พบข้อมูลลายนิ้วมือค้างอยู่ — พร้อมคำนวณ
+                </span>
+              )}
+            </div>
+
+            {/* Note */}
+            {records.length > 0 && (
+              <p className="text-xs text-gray-400 bg-gray-50 rounded-lg px-3 py-2 leading-relaxed">
+                ℹ️ มีข้อมูลเงินเดือนอยู่แล้ว {records.length} คน การคำนวณใหม่จะอัปเดตตัวเลขทั้งหมด (ข้อมูลปรับเพิ่ม/ลดที่ตั้งค่าไว้จะถูกรักษาไว้)
+              </p>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setShowCalcConfirm(false)}
+                className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={confirmAndCalculate}
+                disabled={loadingCalcConfirm}
+                className="px-5 py-2 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {loadingCalcConfirm ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    ตรวจสอบ...
+                  </>
+                ) : 'คำนวณเงินเดือน'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Payroll Settings Modal */}
       {showSettings && canManage && (
@@ -625,7 +747,7 @@ export default function PayrollPage() {
         {records.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-400 mb-4 text-sm">ยังไม่มีข้อมูลเงินเดือนสำหรับเดือนนี้</p>
-            {canManage && <button className="btn-primary" onClick={handleCalculate}>คำนวณเงินเดือน</button>}
+            {canManage && <button className="btn-primary" onClick={openCalcConfirm}>คำนวณเงินเดือน</button>}
           </div>
         ) : (
           <div className="overflow-x-auto">
