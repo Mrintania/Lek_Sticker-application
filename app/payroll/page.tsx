@@ -377,6 +377,16 @@ export default function PayrollPage() {
   const months = Array.from({ length: 12 }, (_, i) => i + 1)
   const years = [2024, 2025, 2026, 2027]
 
+  function prevMonth() {
+    if (month === 1) { setMonth(12); setYear(y => y - 1) }
+    else setMonth(m => m - 1)
+  }
+  function nextMonth() {
+    if (month === 12) { setMonth(1); setYear(y => y + 1) }
+    else setMonth(m => m + 1)
+  }
+  const isNextMonthFuture = year > today.getFullYear() || (year === today.getFullYear() && month >= today.getMonth() + 1)
+
   // Map for export (convert to MonthlySummary shape)
   const summaryForExport: MonthlySummary[] = records.map((r) => ({
     employeeId: r.employee_id,
@@ -399,13 +409,13 @@ export default function PayrollPage() {
 
   return (
     <div className="page-container">
-      <div className="page-header">
+      {/* Row 1 — Title + Action buttons */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">เงินเดือน</h2>
+          <h2 className="text-xl font-bold text-gray-900">เงินเดือน</h2>
           <div className="flex flex-wrap items-center gap-2 mt-1">
-            <p className="text-gray-500 text-sm">{formatThaiMonthYear(year, month)}</p>
             <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium">
-              {period === 1 ? 'รอบ 1 (1–15)' : `รอบ 2 (16–สิ้นเดือน)`}
+              {period === 1 ? 'รอบ 1 (1–15)' : 'รอบ 2 (16–สิ้นเดือน)'}
             </span>
             {isCurrentMonth && (
               <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium">
@@ -420,38 +430,54 @@ export default function PayrollPage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="!w-auto">
-            {months.map((m) => <option key={m} value={m}>{formatThaiMonthYear(year, m).split(' ')[0]}</option>)}
-          </select>
-          <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="!w-auto">
-            {years.map((y) => <option key={y} value={y}>{y + 543}</option>)}
-          </select>
-          {/* Period selector */}
-          <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
-            <button
-              onClick={() => setPeriod(1)}
-              className={`px-3 py-1.5 font-medium transition-colors ${period === 1 ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-            >
-              รอบ 1
-            </button>
-            <button
-              onClick={() => setPeriod(2)}
-              className={`px-3 py-1.5 font-medium transition-colors border-l border-gray-200 ${period === 2 ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-            >
-              รอบ 2
-            </button>
-          </div>
           {canManage && (
             <>
               <button className="btn-secondary whitespace-nowrap" onClick={() => setShowSettings(!showSettings)}>⚙️ เบี้ยขยัน</button>
               <button className="btn-primary whitespace-nowrap" onClick={openCalcConfirm} disabled={loading}>
-                {loading ? '⏳ คำนวณ...' : '🔄 คำนวณเงินเดือน'}
+                {loading ? '⏳ คำนวณ...' : '🔄 คำนวณ'}
               </button>
             </>
           )}
           {records.length > 0 && (
             <button className="btn-secondary whitespace-nowrap" onClick={() => exportMonthlyReport(summaryForExport, year, month)}>⬇️ Export</button>
           )}
+        </div>
+      </div>
+
+      {/* Row 2 — Filter bar */}
+      <div className="flex items-center gap-2">
+        <div className="inline-flex items-center gap-1 bg-white border border-gray-200 rounded-xl px-2 py-1.5 shadow-sm">
+          <button
+            onClick={prevMonth}
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors font-medium"
+          >
+            ←
+          </button>
+          <span className="px-2 text-sm font-semibold text-gray-800 min-w-[110px] text-center">
+            {formatThaiMonthYear(year, month)}
+          </span>
+          <button
+            onClick={nextMonth}
+            disabled={isNextMonthFuture}
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors font-medium disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            →
+          </button>
+          <span className="text-gray-200 mx-1 select-none">|</span>
+          <div className="flex rounded-lg overflow-hidden text-sm border border-gray-200">
+            <button
+              onClick={() => setPeriod(1)}
+              className={`px-3 py-1 font-medium transition-colors ${period === 1 ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+            >
+              รอบ 1
+            </button>
+            <button
+              onClick={() => setPeriod(2)}
+              className={`px-3 py-1 font-medium transition-colors border-l border-gray-200 ${period === 2 ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+            >
+              รอบ 2
+            </button>
+          </div>
         </div>
       </div>
 
@@ -721,23 +747,23 @@ export default function PayrollPage() {
       {/* Summary Cards */}
       {records.length > 0 && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <div className="card text-center !py-3 sm:!py-4">
-            <p className="text-lg sm:text-2xl font-bold text-blue-700">{formatCurrency(totals.basePay)}</p>
-            <p className="text-xs sm:text-sm text-gray-500 mt-1">เงินเดือน</p>
+          <div className="rounded-2xl p-4 bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+            <p className="text-xs text-white/70 mb-1">💰 เงินเดือน</p>
+            <p className="text-2xl font-bold">{formatCurrency(totals.basePay)}</p>
           </div>
-          <div className="card text-center !py-3 sm:!py-4">
-            <p className="text-lg sm:text-2xl font-bold text-green-700">{formatCurrency(totals.bonus)}</p>
-            <p className="text-xs sm:text-sm text-gray-500 mt-1">เบี้ยขยัน</p>
+          <div className="rounded-2xl p-4 bg-gradient-to-br from-green-500 to-green-600 text-white">
+            <p className="text-xs text-white/70 mb-1">⭐ เบี้ยขยัน</p>
+            <p className="text-2xl font-bold">{formatCurrency(totals.bonus)}</p>
           </div>
-          <div className="card text-center !py-3 sm:!py-4">
-            <p className="text-lg sm:text-2xl font-bold text-purple-700">{formatCurrency(totals.totalPay)}</p>
-            <p className="text-xs sm:text-sm text-gray-500 mt-1">รวมทั้งหมด</p>
+          <div className="rounded-2xl p-4 bg-gradient-to-br from-purple-500 to-purple-600 text-white col-span-2 lg:col-span-1">
+            <p className="text-xs text-white/70 mb-1">🏆 รวมทั้งหมด</p>
+            <p className="text-2xl font-bold">{formatCurrency(totals.totalPay)}</p>
           </div>
-          <div className="card text-center !py-3 sm:!py-4">
-            <p className="text-lg sm:text-2xl font-bold text-teal-700">
+          <div className="rounded-2xl p-4 bg-gradient-to-br from-teal-500 to-teal-600 text-white">
+            <p className="text-xs text-white/70 mb-1">🖨️ ผลงานรวม (ชิ้น)</p>
+            <p className="text-2xl font-bold">
               {Object.values(productionByEmployee).reduce((s, v) => s + v, 0).toLocaleString()}
             </p>
-            <p className="text-xs sm:text-sm text-gray-500 mt-1">ผลงานรวม (ชิ้น)</p>
           </div>
         </div>
       )}
@@ -745,9 +771,11 @@ export default function PayrollPage() {
       {/* Payroll Table */}
       <div className="card !p-0 overflow-hidden">
         {records.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-400 mb-4 text-sm">ยังไม่มีข้อมูลเงินเดือนสำหรับเดือนนี้</p>
-            {canManage && <button className="btn-primary" onClick={openCalcConfirm}>คำนวณเงินเดือน</button>}
+          <div className="text-center py-16 px-4">
+            <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4">💰</div>
+            <p className="font-semibold text-gray-700 mb-1">ยังไม่มีข้อมูลเงินเดือน</p>
+            <p className="text-sm text-gray-400 mb-5">{formatThaiMonthYear(year, month)} · รอบ {period}</p>
+            {canManage && <button className="btn-primary" onClick={openCalcConfirm}>🔄 คำนวณเงินเดือน</button>}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -781,12 +809,14 @@ export default function PayrollPage() {
                   return (
                     <tr key={r.employee_id} className="hover:bg-gray-50">
                       <td className="table-cell">
-                        <button
-                          className="font-medium text-blue-600 hover:text-blue-800 hover:underline text-left transition-colors"
-                          onClick={() => openDetail(r)}
-                        >
-                          {r.name}
-                        </button>
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-bold flex-shrink-0">
+                            {r.name.charAt(0)}
+                          </div>
+                          <button className="font-medium text-gray-800 hover:text-blue-600 transition-colors text-left" onClick={() => openDetail(r)}>
+                            {r.name}
+                          </button>
+                        </div>
                       </td>
                       <td className="table-cell text-center">
                         {r.employment_type === 'daily'
@@ -883,7 +913,7 @@ export default function PayrollPage() {
                     </tr>
                   )
                 })}
-                <tr className="bg-gray-50 font-semibold">
+                <tr className="bg-blue-50 font-bold">
                   <td className="table-cell" colSpan={9}>รวมทั้งหมด</td>
                   <td className="table-cell text-right text-blue-700">{formatCurrency(totals.basePay)}</td>
                   <td className="table-cell text-right text-green-700">{formatCurrency(totals.bonus)}</td>
@@ -902,6 +932,14 @@ export default function PayrollPage() {
           </div>
         )}
       </div>
+      {loading && (
+        <div className="flex items-center justify-center gap-3 py-4 text-sm text-blue-600">
+          <svg className="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          กำลังคำนวณเงินเดือน...
+        </div>
+      )}
       {/* Employee Detail Modal */}
       {detailRecord && (
         <div className="modal-backdrop">
