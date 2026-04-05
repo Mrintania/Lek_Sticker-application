@@ -8,7 +8,7 @@ const PUBLIC_PATHS = ['/login', '/api/auth/login', '/api/auth/logout']
 // Page paths that require admin OR manager role (users are blocked)
 const MANAGER_PAGES = [
   '/dashboard', '/daily', '/weekly', '/monthly',
-  '/employee', '/employees', '/leaves', '/payroll',
+  '/employee', '/employees', '/payroll',
   '/production', '/settings',
 ]
 
