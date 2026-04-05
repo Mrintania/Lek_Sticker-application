@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { useRouter } from 'next/navigation'
 
@@ -91,6 +91,12 @@ export default function ProductionPage() {
   const [savingMachine, setSavingMachine] = useState(false)
   const [allMachines, setAllMachines] = useState<Machine[]>([])
 
+  // Calendar picker state
+  const [showCalendar, setShowCalendar] = useState(false)
+  const [calendarYM, setCalendarYM] = useState(() => selectedDate.slice(0, 7)) // 'YYYY-MM'
+  const [recordedDates, setRecordedDates] = useState<Set<string>>(new Set())
+  const calendarRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     if (!loading && user && !['admin', 'manager'].includes(user.role)) {
       router.replace('/dashboard')
@@ -134,6 +140,26 @@ export default function ProductionPage() {
 
   useEffect(() => { loadMachines() }, [loadMachines])
   useEffect(() => { if (machines.length > 0 || selectedDate) loadDayData(selectedDate) }, [selectedDate, loadDayData])
+
+  // Fetch which dates in calendarYM have production records
+  useEffect(() => {
+    if (!showCalendar) return
+    const [y, m] = calendarYM.split('-')
+    fetch(`/api/production/summary?year=${y}&month=${m}`)
+      .then(r => r.json())
+      .then(data => {
+        setRecordedDates(new Set((data.byDate as { date: string }[]).map(d => d.date)))
+      })
+      .catch(() => {})
+  }, [showCalendar, calendarYM])
+
+  // Close calendar on Esc
+  useEffect(() => {
+    if (!showCalendar) return
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setShowCalendar(false) }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [showCalendar])
 
   function getAssignmentForMachine(machineId: number) {
     return assignmentEdits[machineId] ?? { slot1: '', slot2: '' }
@@ -248,12 +274,51 @@ export default function ProductionPage() {
     loadMachines()
   }
 
+  // Build calendar grid for calendarYM
+  function buildCalendarDays(ym: string): (string | null)[] {
+    const [y, m] = ym.split('-').map(Number)
+    const firstDay = new Date(y, m - 1, 1).getDay() // 0=Sun
+    const daysInMonth = new Date(y, m, 0).getDate()
+    const cells: (string | null)[] = Array(firstDay).fill(null)
+    for (let d = 1; d <= daysInMonth; d++) {
+      cells.push(`${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`)
+    }
+    return cells
+  }
+
+  function prevCalendarMonth() {
+    const [y, m] = calendarYM.split('-').map(Number)
+    const d = new Date(y, m - 2, 1)
+    setCalendarYM(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+  }
+
+  function nextCalendarMonth() {
+    const [y, m] = calendarYM.split('-').map(Number)
+    const d = new Date(y, m, 1)
+    setCalendarYM(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+  }
+
+  function openCalendar() {
+    setCalendarYM(selectedDate.slice(0, 7))
+    setShowCalendar(true)
+  }
+
+  function selectCalendarDate(dateStr: string) {
+    setSelectedDate(dateStr)
+    setShowCalendar(false)
+  }
+
   if (loading) return <div className="page-container text-center text-gray-400">⏳ กำลังโหลด...</div>
   if (!user || !['admin', 'manager'].includes(user.role)) return null
 
   const totalToday = Object.values(records).reduce((s, r) => s + (r.totalQuantity ?? 0), 0)
   const { day, full } = formatDateThai(selectedDate)
   const isToday = selectedDate === todayStr()
+
+  const thaiMonthsFull = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม']
+  const calDays = buildCalendarDays(calendarYM)
+  const [calY, calM] = calendarYM.split('-').map(Number)
+  const today = todayStr()
 
   return (
     <div className="page-container">
@@ -303,7 +368,10 @@ export default function ProductionPage() {
           </svg>
         </button>
 
-        <label className="flex-1 flex items-center gap-3 bg-white border border-gray-200 rounded-2xl px-4 py-2.5 shadow-sm cursor-pointer hover:border-teal-300 transition-colors">
+        <button
+          onClick={openCalendar}
+          className="flex-1 flex items-center gap-3 bg-white border border-gray-200 rounded-2xl px-4 py-2.5 shadow-sm cursor-pointer hover:border-teal-300 transition-colors text-left"
+        >
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-teal-600 bg-teal-50 px-2 py-0.5 rounded-lg">{day}</span>
@@ -316,13 +384,7 @@ export default function ProductionPage() {
           <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={e => setSelectedDate(e.target.value)}
-            className="sr-only"
-          />
-        </label>
+        </button>
 
         <button
           onClick={() => setSelectedDate(addDays(selectedDate, 1))}
@@ -558,6 +620,82 @@ export default function ProductionPage() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* ── Calendar Picker Modal ── */}
+      {showCalendar && (
+        <div className="modal-backdrop" onClick={() => setShowCalendar(false)}>
+          <div
+            ref={calendarRef}
+            className="bg-white rounded-2xl shadow-xl p-4 w-full max-w-sm mx-4"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Month navigation */}
+            <div className="flex items-center justify-between mb-3">
+              <button
+                onClick={prevCalendarMonth}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-600 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <span className="font-bold text-gray-800">
+                {thaiMonthsFull[calM]} {calY + 543}
+              </span>
+              <button
+                onClick={nextCalendarMonth}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-600 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Day-of-week headers */}
+            <div className="grid grid-cols-7 mb-1">
+              {['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'].map(d => (
+                <div key={d} className="text-center text-xs font-semibold text-gray-400 py-1">{d}</div>
+              ))}
+            </div>
+
+            {/* Day cells */}
+            <div className="grid grid-cols-7 gap-y-0.5">
+              {calDays.map((dateStr, i) => {
+                if (!dateStr) return <div key={i} />
+                const isSelected = dateStr === selectedDate
+                const isToday2 = dateStr === today
+                const hasRecord = recordedDates.has(dateStr)
+                const isFuture = dateStr > today
+                return (
+                  <button
+                    key={dateStr}
+                    onClick={() => selectCalendarDate(dateStr)}
+                    disabled={isFuture}
+                    className={`relative flex flex-col items-center justify-center h-9 w-full rounded-xl text-sm font-medium transition-colors
+                      ${isSelected ? 'bg-teal-500 text-white shadow-md' : ''}
+                      ${!isSelected && isToday2 ? 'bg-teal-50 text-teal-700 font-bold' : ''}
+                      ${!isSelected && !isToday2 && !isFuture ? 'text-gray-700 hover:bg-gray-100' : ''}
+                      ${isFuture ? 'text-gray-300 cursor-not-allowed' : 'cursor-pointer'}
+                    `}
+                  >
+                    <span>{Number(dateStr.split('-')[2])}</span>
+                    {hasRecord && (
+                      <span className={`absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-teal-500'}`} />
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Legend */}
+            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
+              <span className="w-2 h-2 rounded-full bg-teal-500 inline-block" />
+              <span>มีการบันทึกงานแล้ว</span>
+            </div>
+          </div>
         </div>
       )}
 
