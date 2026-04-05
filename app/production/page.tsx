@@ -488,7 +488,7 @@ export default function ProductionPage() {
           <p className="text-sm text-gray-400 mt-1">กดปุ่ม "แท่นพิมพ์" เพื่อเพิ่มแท่นพิมพ์ใหม่</p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
           {machines.map((machine) => {
             const asg = getAssignmentForMachine(machine.id)
             const items = getItemsForMachine(machine.id)
