@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
@@ -18,7 +18,8 @@ type ViewMode = 'day' | 'week' | 'month'
 type EmpSortKey = 'employee_name' | 'total_quantity' | 'days_worked' | 'avg_per_day'
 type MachineSortKey = 'machine_code' | 'total_quantity' | 'record_count' | 'avg_per_day'
 
-const THAI_MONTHS      = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม']
+const THAI_MONTHS_FULL = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม']
+const THAI_MONTHS      = THAI_MONTHS_FULL
 const THAI_MONTHS_SHORT = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
 const THAI_DAYS_SHORT  = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส']
 
@@ -57,6 +58,17 @@ function formatThaiDateShort(dateStr: string): string {
   const [, m, d] = dateStr.split('-')
   return `${Number(d)} ${THAI_MONTHS_SHORT[Number(m)]}`
 }
+function buildCalendarDays(ym: string): (string | null)[] {
+  const [y, m] = ym.split('-').map(Number)
+  const firstDay = new Date(y, m - 1, 1).getDay()
+  const daysInMonth = new Date(y, m, 0).getDate()
+  const cells: (string | null)[] = Array(firstDay).fill(null)
+  for (let d = 1; d <= daysInMonth; d++) {
+    cells.push(`${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`)
+  }
+  return cells
+}
+
 function formatWeekRange(fromStr: string, toStr: string): string {
   const [fy, fm, fd] = fromStr.split('-')
   const [ty, tm, td] = toStr.split('-')
@@ -87,6 +99,13 @@ export default function ProductionDashboardPage() {
   const [machineSortKey,  setMachineSortKey]  = useState<MachineSortKey>('total_quantity')
   const [machineSortDir,  setMachineSortDir]  = useState<'asc' | 'desc'>('desc')
 
+  // Calendar picker state (day view)
+  const [showCalendar,   setShowCalendar]   = useState(false)
+  const [calendarYM,     setCalendarYM]     = useState(() => todayStr().slice(0, 7))
+  const [recordedDates,  setRecordedDates]  = useState<Set<string>>(new Set())
+  const [holidayDates,   setHolidayDates]   = useState<Map<string, string>>(new Map())
+  const calendarRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     if (!userLoading && !canManage && user !== undefined) router.replace('/dashboard')
   }, [userLoading, canManage, user, router])
@@ -112,6 +131,31 @@ export default function ProductionDashboardPage() {
   }, [viewMode, selDate, selYear, selMonth])
 
   useEffect(() => { if (canManage) fetchSummary() }, [fetchSummary, canManage])
+
+  // Fetch recorded dates + holidays when calendar opens
+  useEffect(() => {
+    if (!showCalendar) return
+    const [y, m] = calendarYM.split('-')
+    fetch(`/api/production/summary?year=${y}&month=${m}`)
+      .then(r => r.json())
+      .then(data => setRecordedDates(new Set((data.byDate as { date: string }[]).map(d => d.date))))
+      .catch(() => {})
+    fetch(`/api/holidays?year=${y}`)
+      .then(r => r.json())
+      .then((data: { date: string; name: string; is_active: number }[]) => {
+        const map = new Map<string, string>()
+        for (const h of data) { if (h.is_active) map.set(h.date, h.name) }
+        setHolidayDates(map)
+      })
+      .catch(() => {})
+  }, [showCalendar, calendarYM])
+
+  useEffect(() => {
+    if (!showCalendar) return
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setShowCalendar(false) }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [showCalendar])
 
   if (userLoading || !canManage) return null
 
@@ -258,12 +302,18 @@ export default function ProductionDashboardPage() {
               </svg>
             </button>
 
-            <div className="flex-1 bg-white border border-gray-200 rounded-2xl px-4 py-2.5 shadow-sm text-center">
+            <button
+              onClick={() => { setCalendarYM(selDate.slice(0, 7)); setShowCalendar(true) }}
+              className="flex-1 flex items-center justify-center gap-2 bg-white border border-gray-200 rounded-2xl px-4 py-2.5 shadow-sm hover:border-blue-300 transition-colors cursor-pointer"
+            >
               <span className="font-semibold text-gray-800 text-sm sm:text-base">{formatThaiDate(selDate)}</span>
               {selDate === today && (
-                <span className="ml-2 text-xs font-semibold text-white bg-blue-500 px-2 py-0.5 rounded-lg">วันนี้</span>
+                <span className="text-xs font-semibold text-white bg-blue-500 px-2 py-0.5 rounded-lg">วันนี้</span>
               )}
-            </div>
+              <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </button>
 
             <button onClick={nextDay} disabled={isNextDayDisabled}
               className="w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 transition-colors shadow-sm flex-shrink-0 disabled:opacity-30 disabled:cursor-not-allowed">
@@ -606,6 +656,106 @@ export default function ProductionDashboardPage() {
           )}
         </>
       )}
+
+      {/* ── Calendar Picker Modal (day view) ── */}
+      {showCalendar && (() => {
+        const calDays = buildCalendarDays(calendarYM)
+        const [calY, calM] = calendarYM.split('-').map(Number)
+        return (
+          <div className="modal-backdrop" onClick={() => setShowCalendar(false)}>
+            <div
+              ref={calendarRef}
+              className="bg-white rounded-2xl shadow-xl p-4 w-full max-w-sm mx-4"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Month navigation */}
+              <div className="flex items-center justify-between mb-3">
+                <button
+                  onClick={() => {
+                    const [y, m] = calendarYM.split('-').map(Number)
+                    const d = new Date(y, m - 2, 1)
+                    setCalendarYM(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+                  }}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-600 transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <span className="font-bold text-gray-800">{THAI_MONTHS_FULL[calM]} {calY + 543}</span>
+                <button
+                  onClick={() => {
+                    const [y, m] = calendarYM.split('-').map(Number)
+                    const d = new Date(y, m, 1)
+                    setCalendarYM(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+                  }}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-600 transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Day-of-week headers */}
+              <div className="grid grid-cols-7 mb-1">
+                {['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'].map(d => (
+                  <div key={d} className="text-center text-xs font-semibold text-gray-400 py-1">{d}</div>
+                ))}
+              </div>
+
+              {/* Day cells */}
+              <div className="grid grid-cols-7 gap-y-0.5">
+                {calDays.map((dateStr, i) => {
+                  if (!dateStr) return <div key={i} />
+                  const isSelected = dateStr === selDate
+                  const isToday2   = dateStr === today
+                  const hasRecord  = recordedDates.has(dateStr)
+                  const isFuture   = dateStr > today
+                  const holidayName = holidayDates.get(dateStr)
+                  const isSunday   = new Date(dateStr + 'T00:00:00').getDay() === 0
+                  const isHoliday  = !!holidayName || isSunday
+                  return (
+                    <button
+                      key={dateStr}
+                      onClick={() => { setSelDate(dateStr); setShowCalendar(false) }}
+                      disabled={isFuture}
+                      title={holidayName}
+                      className={`relative flex flex-col items-center justify-center h-9 w-full rounded-xl text-sm font-medium transition-colors
+                        ${isSelected ? 'bg-blue-500 text-white shadow-md' : ''}
+                        ${!isSelected && isHoliday ? 'bg-red-50 text-red-500' : ''}
+                        ${!isSelected && !isHoliday && isToday2 ? 'bg-blue-50 text-blue-700 font-bold' : ''}
+                        ${!isSelected && !isHoliday && !isToday2 && !isFuture ? 'text-gray-700 hover:bg-gray-100' : ''}
+                        ${isFuture ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}
+                      `}
+                    >
+                      <span>{Number(dateStr.split('-')[2])}</span>
+                      {(hasRecord || isHoliday) && (
+                        <span className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-0.5">
+                          {hasRecord && <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-blue-500'}`} />}
+                          {isHoliday && <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-red-400'}`} />}
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Legend */}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
+                  <span>มีข้อมูลผลงาน</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-red-400 inline-block" />
+                  <span>วันหยุด</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
