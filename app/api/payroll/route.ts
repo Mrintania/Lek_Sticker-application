@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'period ต้องเป็น 1 หรือ 2' }, { status: 400 })
   }
 
-  let query = `SELECT pr.*, e.name, e.employment_type FROM payroll_records pr
+  let query = `SELECT pr.*, e.name, e.employment_type, e.phone, e.bank_name, e.bank_account_number, e.bank_account_name, e.prompt_pay_id FROM payroll_records pr
     LEFT JOIN employees e ON pr.employee_id = e.employee_id WHERE 1=1`
   const params: (string | number)[] = []
 

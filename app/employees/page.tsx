@@ -4,6 +4,7 @@ import { EmployeeProfile, EmploymentType } from '@/lib/types'
 import { formatCurrency } from '@/lib/formatters'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { SortIcon } from '@/components/shared/SortIcon'
+import { THAI_BANKS, getBankById } from '@/lib/banks'
 
 type SortKey = 'employeeId' | 'name' | 'department' | 'employmentType' | 'rate' | 'startDate' | 'isActive'
 type SortDir = 'asc' | 'desc'
@@ -33,6 +34,7 @@ export default function EmployeesPage() {
   const [confirmDeactivate, setConfirmDeactivate] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
+  const [showBankSection, setShowBankSection] = useState(false)
 
   const loadEmployees = useCallback(() => {
     fetch('/api/employees?includeInactive=true').then(r => r.json()).then(setEmployees).catch(() => {})
@@ -83,6 +85,7 @@ export default function EmployeesPage() {
     setForm(EMPTY_FORM)
     setEditId(null)
     setFormError('')
+    setShowBankSection(false)
     setShowModal(true)
   }
 
@@ -90,6 +93,7 @@ export default function EmployeesPage() {
     setForm({ ...emp })
     setEditId(emp.employeeId)
     setFormError('')
+    setShowBankSection(!!(emp.bankName || emp.bankAccountNumber || emp.promptPayId || emp.phone))
     setShowModal(true)
   }
 
@@ -130,6 +134,15 @@ export default function EmployeesPage() {
       body: JSON.stringify({ isActive: false }),
     })
     setConfirmDeactivate(null)
+    loadEmployees()
+  }
+
+  async function handleActivate(employeeId: string) {
+    await fetch(`/api/employees/${employeeId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isActive: true }),
+    })
     loadEmployees()
   }
 
@@ -306,6 +319,17 @@ export default function EmployeesPage() {
                               </svg>
                             </button>
                           )}
+                          {canManage && !emp.isActive && (
+                            <button
+                              onClick={() => handleActivate(emp.employeeId)}
+                              title="เปิดใช้งานอีกครั้ง"
+                              className="p-1.5 rounded-lg text-green-500 hover:text-green-700 hover:bg-green-50 transition-colors"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            </button>
+                          )}
                           {!canManage && (
                             <span className="text-gray-300 text-xs">—</span>
                           )}
@@ -428,6 +452,107 @@ export default function EmployeesPage() {
                   className="w-full"
                 />
               </div>
+
+              {/* ── Bank & Contact Info ── */}
+              <div className="border border-gray-200 rounded-xl overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setShowBankSection(v => !v)}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors text-sm font-medium text-gray-700"
+                >
+                  <span className="flex items-center gap-2">
+                    🏦 <span>ข้อมูลการติดต่อและบัญชีธนาคาร</span>
+                    {(form.bankName || form.bankAccountNumber || form.promptPayId || form.phone) && (
+                      <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full font-medium">มีข้อมูล</span>
+                    )}
+                  </span>
+                  <svg className={`w-4 h-4 text-gray-400 transition-transform ${showBankSection ? 'rotate-180' : ''}`}
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {showBankSection && (
+                  <div className="p-4 space-y-3 border-t border-gray-100">
+                    {/* Phone */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">เบอร์โทรศัพท์</label>
+                      <input
+                        type="tel"
+                        value={form.phone ?? ''}
+                        onChange={e => setForm({ ...form, phone: e.target.value || undefined })}
+                        className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-teal-300 focus:border-teal-400 outline-none transition-all"
+                        placeholder="0XX-XXX-XXXX"
+                      />
+                    </div>
+
+                    {/* Bank selector */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">ธนาคาร</label>
+                      <select
+                        value={form.bankName ?? ''}
+                        onChange={e => setForm({ ...form, bankName: e.target.value || undefined })}
+                        className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-teal-300 focus:border-teal-400 outline-none transition-all bg-white"
+                      >
+                        <option value="">— เลือกธนาคาร —</option>
+                        {THAI_BANKS.map(bank => (
+                          <option key={bank.id} value={bank.id}>
+                            {bank.name} ({bank.shortName})
+                          </option>
+                        ))}
+                      </select>
+                      {form.bankName && (() => {
+                        const bank = getBankById(form.bankName)
+                        return bank ? (
+                          <span
+                            className="inline-block mt-1.5 px-2.5 py-0.5 rounded-lg text-xs font-bold"
+                            style={{ backgroundColor: bank.bgColor, color: bank.color }}
+                          >
+                            {bank.shortName}
+                          </span>
+                        ) : null
+                      })()}
+                    </div>
+
+                    {/* Account number */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">เลขบัญชี</label>
+                      <input
+                        type="text"
+                        value={form.bankAccountNumber ?? ''}
+                        onChange={e => setForm({ ...form, bankAccountNumber: e.target.value || undefined })}
+                        className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-teal-300 focus:border-teal-400 outline-none transition-all font-mono"
+                        placeholder="XXX-X-XXXXX-X"
+                      />
+                    </div>
+
+                    {/* Account name */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">ชื่อบัญชี</label>
+                      <input
+                        type="text"
+                        value={form.bankAccountName ?? ''}
+                        onChange={e => setForm({ ...form, bankAccountName: e.target.value || undefined })}
+                        className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-teal-300 focus:border-teal-400 outline-none transition-all"
+                        placeholder="ชื่อ-นามสกุล ในบัญชี"
+                      />
+                    </div>
+
+                    {/* PromptPay ID */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">PromptPay ID</label>
+                      <input
+                        type="text"
+                        value={form.promptPayId ?? ''}
+                        onChange={e => setForm({ ...form, promptPayId: e.target.value || undefined })}
+                        className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-teal-300 focus:border-teal-400 outline-none transition-all font-mono"
+                        placeholder="เบอร์โทรหรือเลขบัตรประชาชน"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {formError && <p className="text-red-600 text-sm">⚠️ {formError}</p>}
             </div>
             <div className="p-4 sm:p-6 border-t border-gray-100 flex justify-end gap-3">

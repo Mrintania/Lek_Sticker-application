@@ -17,9 +17,58 @@ export async function PATCH(
   if (!id) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
 
   const body = await req.json()
-  const { extra_bonus, extra_bonus_note, extra_deduction, extra_deduction_note } = body
 
   const db = getDb()
+
+  // ── Payment status update ─────────────────────────────────────────────────
+  if (body.payment_status !== undefined) {
+    const VALID_STATUSES = ['pending', 'paid']
+    const VALID_METHODS  = ['cash', 'bank_transfer', 'promptpay']
+
+    if (!VALID_STATUSES.includes(body.payment_status)) {
+      return NextResponse.json({ error: 'Invalid payment_status' }, { status: 400 })
+    }
+    if (body.payment_status === 'paid' && body.payment_method && !VALID_METHODS.includes(body.payment_method)) {
+      return NextResponse.json({ error: 'Invalid payment_method' }, { status: 400 })
+    }
+
+    if (body.payment_status === 'paid') {
+      db.prepare(`
+        UPDATE payroll_records
+        SET payment_status = ?,
+            payment_method = ?,
+            payment_note   = ?,
+            paid_at        = datetime('now'),
+            paid_by        = ?
+        WHERE id = ?
+      `).run(
+        'paid',
+        body.payment_method || null,
+        body.payment_note   || null,
+        user.username,
+        id
+      )
+    } else {
+      db.prepare(`
+        UPDATE payroll_records
+        SET payment_status = 'pending',
+            payment_method = NULL,
+            payment_note   = NULL,
+            paid_at        = NULL,
+            paid_by        = NULL
+        WHERE id = ?
+      `).run(id)
+    }
+
+    logAudit(db, user.username, 'payroll.payment', 'payroll_records', String(id), {
+      payment_status: body.payment_status,
+      payment_method: body.payment_method ?? null,
+    }, getIp(req))
+
+    return NextResponse.json({ success: true })
+  }
+
+  const { extra_bonus, extra_bonus_note, extra_deduction, extra_deduction_note } = body
   const rec = db.prepare('SELECT * FROM payroll_records WHERE id = ?').get(id) as Record<string, number | string | null> | undefined
   if (!rec) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 

@@ -100,6 +100,7 @@ export default function ProductionPage() {
   const [showCalendar, setShowCalendar] = useState(false)
   const [calendarYM, setCalendarYM] = useState(() => selectedDate.slice(0, 7)) // 'YYYY-MM'
   const [recordedDates, setRecordedDates] = useState<Set<string>>(new Set())
+  const [holidayDates, setHolidayDates] = useState<Map<string, string>>(new Map()) // date → name
   const calendarRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -146,7 +147,22 @@ export default function ProductionPage() {
   useEffect(() => { loadMachines() }, [loadMachines])
   useEffect(() => { if (machines.length > 0 || selectedDate) loadDayData(selectedDate) }, [selectedDate, loadDayData])
 
-  // Fetch which dates in calendarYM have production records
+  // Fetch holidays for the current year on mount (for date bar indicator)
+  useEffect(() => {
+    const y = selectedDate.slice(0, 4)
+    fetch(`/api/holidays?year=${y}`)
+      .then(r => r.json())
+      .then((data: { date: string; name: string; is_active: number }[]) => {
+        const map = new Map<string, string>()
+        for (const h of data) {
+          if (h.is_active) map.set(h.date, h.name)
+        }
+        setHolidayDates(map)
+      })
+      .catch(() => {})
+  }, [selectedDate.slice(0, 4)]) // re-fetch only when year changes
+
+  // Fetch which dates in calendarYM have production records (calendar only)
   useEffect(() => {
     if (!showCalendar) return
     const [y, m] = calendarYM.split('-')
@@ -154,6 +170,17 @@ export default function ProductionPage() {
       .then(r => r.json())
       .then(data => {
         setRecordedDates(new Set((data.byDate as { date: string }[]).map(d => d.date)))
+      })
+      .catch(() => {})
+    // Update holidays if calendar month crosses into a different year
+    fetch(`/api/holidays?year=${y}`)
+      .then(r => r.json())
+      .then((data: { date: string; name: string; is_active: number }[]) => {
+        const map = new Map<string, string>()
+        for (const h of data) {
+          if (h.is_active) map.set(h.date, h.name)
+        }
+        setHolidayDates(map)
       })
       .catch(() => {})
   }, [showCalendar, calendarYM])
@@ -170,15 +197,7 @@ export default function ProductionPage() {
     return assignmentEdits[machineId] ?? { slot1: '', slot2: '' }
   }
 
-  function getUsedEmployeeIds(excludeMachineId: number, excludeSlot: number): Set<string> {
-    const used = new Set<string>()
-    for (const [machId, asg] of Object.entries(assignmentEdits)) {
-      const mId = Number(machId)
-      if (asg.slot1 && !(mId === excludeMachineId && excludeSlot === 1)) used.add(asg.slot1)
-      if (asg.slot2 && !(mId === excludeMachineId && excludeSlot === 2)) used.add(asg.slot2)
-    }
-    return used
-  }
+
 
   function getItemsForMachine(machineId: number): ProductionItem[] {
     return itemEdits[machineId] ?? [{ model_name: '', quantity: '' }]
@@ -372,6 +391,10 @@ export default function ProductionPage() {
   const totalToday = Object.values(records).reduce((s, r) => s + (r.totalQuantity ?? 0), 0)
   const { day, full } = formatDateThai(selectedDate)
   const isToday = selectedDate === todayStr()
+  const selectedIsSunday = new Date(selectedDate + 'T00:00:00').getDay() === 0
+  const selectedHolidayName = holidayDates.get(selectedDate)
+  const isSelectedHoliday = selectedIsSunday || !!selectedHolidayName
+  const holidayLabel = selectedHolidayName ?? (selectedIsSunday ? 'วันอาทิตย์' : '')
 
   const thaiMonthsFull = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม']
   const calDays = buildCalendarDays(calendarYM)
@@ -432,10 +455,13 @@ export default function ProductionPage() {
         >
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-teal-600 bg-teal-50 px-2 py-0.5 rounded-lg">{day}</span>
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-lg ${isSelectedHoliday ? 'text-red-600 bg-red-50' : 'text-teal-600 bg-teal-50'}`}>{day}</span>
               <span className="font-semibold text-gray-800">{full}</span>
               {isToday && (
                 <span className="text-xs font-semibold text-white bg-teal-500 px-2 py-0.5 rounded-lg">วันนี้</span>
+              )}
+              {isSelectedHoliday && (
+                <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-lg">🏖️ {holidayLabel}</span>
               )}
             </div>
           </div>
@@ -496,7 +522,7 @@ export default function ProductionPage() {
           <p className="text-sm text-gray-400 mt-1">กดปุ่ม "แท่นพิมพ์" เพื่อเพิ่มแท่นพิมพ์ใหม่</p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
           {machines.map((machine) => {
             const asg = getAssignmentForMachine(machine.id)
             const items = getItemsForMachine(machine.id)
@@ -572,7 +598,6 @@ export default function ProductionPage() {
                       {[1, 2].map((slot) => {
                         const currentVal = slot === 1 ? asg.slot1 : asg.slot2
                         const currentEmp = slot === 1 ? emp1 : emp2
-                        const usedIds = getUsedEmployeeIds(machine.id, slot)
                         return (
                           <div key={slot} className="relative">
                             <label className="block text-xs text-gray-400 mb-1">คนที่ {slot}</label>
@@ -592,14 +617,11 @@ export default function ProductionPage() {
                                 }}
                               >
                                 <option value="">— ไม่มี —</option>
-                                {employees.map(emp => {
-                                  const isUsedElsewhere = usedIds.has(emp.employeeId)
-                                  return (
-                                    <option key={emp.employeeId} value={emp.employeeId} disabled={isUsedElsewhere}>
-                                      {emp.name}{isUsedElsewhere ? ' (ถูกมอบหมายแล้ว)' : ''}
-                                    </option>
-                                  )
-                                })}
+                                {employees.map(emp => (
+                                  <option key={emp.employeeId} value={emp.employeeId}>
+                                    {emp.name}
+                                  </option>
+                                ))}
                               </select>
                             </div>
                           </div>
@@ -757,21 +779,35 @@ export default function ProductionPage() {
                 const isToday2 = dateStr === today
                 const hasRecord = recordedDates.has(dateStr)
                 const isFuture = dateStr > today
+                const holidayName = holidayDates.get(dateStr)
+                const isSunday = new Date(dateStr + 'T00:00:00').getDay() === 0
+                const isHoliday = !!holidayName || isSunday
                 return (
                   <button
                     key={dateStr}
                     onClick={() => selectCalendarDate(dateStr)}
                     disabled={isFuture}
+                    title={holidayName}
                     className={`relative flex flex-col items-center justify-center h-9 w-full rounded-xl text-sm font-medium transition-colors
                       ${isSelected ? 'bg-teal-500 text-white shadow-md' : ''}
-                      ${!isSelected && isToday2 ? 'bg-teal-50 text-teal-700 font-bold' : ''}
-                      ${!isSelected && !isToday2 && !isFuture ? 'text-gray-700 hover:bg-gray-100' : ''}
-                      ${isFuture ? 'text-gray-300 cursor-not-allowed' : 'cursor-pointer'}
+                      ${!isSelected && isHoliday ? 'bg-red-50 text-red-500' : ''}
+                      ${!isSelected && !isHoliday && isToday2 ? 'bg-teal-50 text-teal-700 font-bold' : ''}
+                      ${!isSelected && !isHoliday && !isToday2 && !isFuture ? 'text-gray-700 hover:bg-gray-100' : ''}
+                      ${isFuture && !isHoliday ? 'text-gray-300 cursor-not-allowed' : ''}
+                      ${isFuture && isHoliday ? 'text-red-300 cursor-not-allowed' : ''}
+                      ${!isFuture ? 'cursor-pointer' : ''}
                     `}
                   >
                     <span>{Number(dateStr.split('-')[2])}</span>
-                    {hasRecord && (
-                      <span className={`absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-teal-500'}`} />
+                    {(hasRecord || isHoliday) && (
+                      <span className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-0.5">
+                        {hasRecord && (
+                          <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-teal-500'}`} />
+                        )}
+                        {isHoliday && (
+                          <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-red-400'}`} />
+                        )}
+                      </span>
                     )}
                   </button>
                 )
@@ -779,9 +815,15 @@ export default function ProductionPage() {
             </div>
 
             {/* Legend */}
-            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
-              <span className="w-2 h-2 rounded-full bg-teal-500 inline-block" />
-              <span>มีการบันทึกงานแล้ว</span>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-teal-500 inline-block" />
+                <span>มีการบันทึกงานแล้ว</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-red-400 inline-block" />
+                <span>วันหยุด</span>
+              </div>
             </div>
           </div>
         </div>

@@ -144,7 +144,25 @@ export default function MePage() {
 
     fetch(`/api/payroll?year=${year}&month=${month}`)
       .then(r => r.ok ? r.json() : [])
-      .then((data: PayrollRec[]) => setPayroll(data[0] ?? null))
+      .then((data: PayrollRec[]) => {
+        if (data.length === 0) { setPayroll(null); return }
+        // รวมทุก period ในเดือนเดียวกัน (period 1 + period 2 → ทั้งเดือน)
+        const merged: PayrollRec = data.reduce((acc, rec) => ({
+          ...acc,
+          working_days:       acc.working_days       + rec.working_days,
+          days_present:       acc.days_present       + rec.days_present,
+          days_absent:        acc.days_absent        + rec.days_absent,
+          days_sick_with_cert: acc.days_sick_with_cert + rec.days_sick_with_cert,
+          days_sick_no_cert:  acc.days_sick_no_cert  + rec.days_sick_no_cert,
+          days_half_day:      acc.days_half_day      + rec.days_half_day,
+          total_late_minutes: acc.total_late_minutes + rec.total_late_minutes,
+          base_pay:           acc.base_pay           + rec.base_pay,
+          diligence_bonus:    acc.diligence_bonus    + rec.diligence_bonus,
+          deductions:         acc.deductions         + rec.deductions,
+          total_pay:          acc.total_pay          + rec.total_pay,
+        }))
+        setPayroll(merged)
+      })
       .catch(() => setPayroll(null))
       .finally(() => setLoadingPayroll(false))
 

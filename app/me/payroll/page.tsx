@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { formatThaiMonthYear, formatCurrency } from '@/lib/formatters'
+import { PaymentMethod, PAYMENT_METHOD_LABELS, PAYMENT_METHOD_ICONS } from '@/lib/types'
 
 interface PayrollRec {
   employee_id: string
@@ -23,6 +24,9 @@ interface PayrollRec {
   extra_deduction: number
   extra_deduction_note: string | null
   total_pay: number
+  payment_status: 'pending' | 'paid'
+  payment_method: PaymentMethod | null
+  paid_at: string | null
 }
 
 interface MonthGroup {
@@ -222,6 +226,18 @@ export default function MyPayrollPage() {
                               )}
                             </div>
                           </div>
+                          {/* Payment status badge */}
+                          <div className="mt-2 flex justify-end">
+                            {p.payment_status === 'paid' ? (
+                              <span className="inline-flex items-center gap-1 text-xs font-semibold bg-green-100 text-green-700 px-2.5 py-1 rounded-full">
+                                {p.payment_method ? PAYMENT_METHOD_ICONS[p.payment_method] : '✅'} จ่ายแล้ว
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-xs font-semibold bg-orange-100 text-orange-600 px-2.5 py-1 rounded-full">
+                                ⏳ รอรับเงิน
+                              </span>
+                            )}
+                          </div>
                         </button>
                       )
                     })}
@@ -314,6 +330,32 @@ export default function MyPayrollPage() {
               <div className="flex items-center justify-between pt-3 border-t border-gray-200">
                 <span className="text-sm font-bold text-gray-700">รวมสุทธิ</span>
                 <span className="text-lg font-bold text-green-600">{formatCurrency(selected.total_pay)}</span>
+              </div>
+              {/* Payment status section */}
+              <div className="border-t border-gray-100 pt-3 mt-1">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">สถานะการรับเงิน</p>
+                {selected.payment_status === 'paid' ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 bg-green-100 text-green-700 px-3 py-1.5 rounded-xl text-sm font-semibold">
+                      {selected.payment_method ? PAYMENT_METHOD_ICONS[selected.payment_method] : '✅'} จ่ายแล้ว
+                      {selected.payment_method && ` · ${PAYMENT_METHOD_LABELS[selected.payment_method]}`}
+                    </span>
+                    {selected.paid_at && (
+                      <span className="text-xs text-gray-400">
+                        {new Date(selected.paid_at.endsWith('Z') ? selected.paid_at : selected.paid_at + 'Z')
+                          .toLocaleDateString('th-TH', {
+                            day: 'numeric', month: 'short', year: '2-digit',
+                            hour: '2-digit', minute: '2-digit',
+                            timeZone: 'Asia/Bangkok',
+                          })}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 bg-orange-100 text-orange-600 px-3 py-1.5 rounded-xl text-sm font-semibold">
+                    ⏳ รอรับเงิน
+                  </span>
+                )}
               </div>
             </div>
 

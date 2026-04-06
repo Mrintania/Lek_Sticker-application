@@ -16,6 +16,11 @@ function mapEmployee(row: any) {
     startDate: row.start_date,
     isActive: row.is_active === 1,
     createdAt: row.created_at,
+    phone: (row as any).phone ?? undefined,
+    bankName: (row as any).bank_name ?? undefined,
+    bankAccountNumber: (row as any).bank_account_number ?? undefined,
+    bankAccountName: (row as any).bank_account_name ?? undefined,
+    promptPayId: (row as any).prompt_pay_id ?? undefined,
   }
 }
 

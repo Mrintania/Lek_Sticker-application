@@ -10,6 +10,7 @@ const MANAGER_PAGES = [
   '/dashboard', '/daily', '/weekly', '/monthly',
   '/employee', '/employees', '/payroll',
   '/production', '/settings',
+  '/delivery',
 ]
 
 // Page paths that require admin role only
@@ -18,8 +19,9 @@ const ADMIN_PAGES = ['/admin']
 // API paths that require admin OR manager role
 const MANAGER_API = [
   '/api/employees', '/api/scans', '/api/holidays',
-  '/api/attendance', '/api/production', '/api/settings',
+  '/api/production', '/api/settings',
   '/api/payroll/calculate', '/api/payroll/settings',
+  '/api/delivery',
 ]
 
 // API paths that require admin role only — return 404 to prevent enumeration
