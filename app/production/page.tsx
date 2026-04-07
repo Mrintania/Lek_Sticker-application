@@ -242,8 +242,8 @@ export default function ProductionPage() {
   async function saveRecord(machineId: number) {
     setSavingRecord(machineId)
     const items = getItemsForMachine(machineId)
-      .filter(i => i.model_name.toString().trim() && Number(i.quantity) > 0)
-      .map(i => ({ model_name: String(i.model_name).trim(), quantity: Number(i.quantity) }))
+      .filter(i => Number(i.quantity) > 0)
+      .map(i => ({ model_name: '', quantity: Number(i.quantity) }))
 
     const res = await fetch('/api/production/records', {
       method: 'POST',
