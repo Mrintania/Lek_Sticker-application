@@ -57,7 +57,10 @@ export default function AdminUsersPage() {
   const [saving, setSaving] = useState(false)
   const [resetPasswordId, setResetPasswordId] = useState<number | null>(null)
   const [newPassword, setNewPassword] = useState('')
+  const [confirmNewPassword, setConfirmNewPassword] = useState('')
+  const [resetPasswordError, setResetPasswordError] = useState('')
   const [resetMsg, setResetMsg] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<UserRecord | null>(null)
   const [deleteError, setDeleteError] = useState('')
   const [deleting, setDeleting] = useState(false)
@@ -80,6 +83,7 @@ export default function AdminUsersPage() {
 
   function openAdd() {
     setForm(EMPTY_FORM)
+    setConfirmPassword('')
     setEditId(null)
     setFormError('')
     setShowModal(true)
@@ -93,6 +97,7 @@ export default function AdminUsersPage() {
       employeeId: u.employee_id ?? '',
       fullName: u.full_name ?? '',
     })
+    setConfirmPassword('')
     setEditId(u.id)
     setFormError('')
     setShowModal(true)
@@ -101,6 +106,7 @@ export default function AdminUsersPage() {
   async function handleSave() {
     if (!form.username.trim()) { setFormError('กรุณากรอก Username'); return }
     if (!editId && !form.password.trim()) { setFormError('กรุณากรอก Password'); return }
+    if (!editId && form.password !== confirmPassword) { setFormError('รหัสผ่านไม่ตรงกัน กรุณาตรวจสอบอีกครั้ง'); return }
     setSaving(true)
     setFormError('')
     try {
@@ -162,6 +168,11 @@ export default function AdminUsersPage() {
 
   async function handleResetPassword() {
     if (!resetPasswordId || !newPassword.trim()) return
+    if (newPassword !== confirmNewPassword) {
+      setResetPasswordError('รหัสผ่านไม่ตรงกัน กรุณาตรวจสอบอีกครั้ง')
+      return
+    }
+    setResetPasswordError('')
     const res = await fetch(`/api/users/${resetPasswordId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -170,6 +181,7 @@ export default function AdminUsersPage() {
     if (res.ok) {
       setResetMsg('เปลี่ยน Password แล้ว')
       setNewPassword('')
+      setConfirmNewPassword('')
       setTimeout(() => { setResetPasswordId(null); setResetMsg('') }, 2000)
     }
   }
@@ -353,16 +365,34 @@ export default function AdminUsersPage() {
                 />
               </div>
               {!editId && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
-                  <input
-                    type="password"
-                    className="w-full"
-                    value={form.password}
-                    onChange={(e) => setForm({ ...form, password: e.target.value })}
-                    placeholder="รหัสผ่าน"
-                  />
-                </div>
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
+                    <input
+                      type="password"
+                      className="w-full"
+                      value={form.password}
+                      onChange={(e) => setForm({ ...form, password: e.target.value })}
+                      placeholder="รหัสผ่าน"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">ยืนยัน Password *</label>
+                    <input
+                      type="password"
+                      className={`w-full ${confirmPassword && form.password !== confirmPassword ? 'border-red-400 focus:ring-red-300' : confirmPassword && form.password === confirmPassword ? 'border-green-400 focus:ring-green-300' : ''}`}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="พิมพ์รหัสผ่านอีกครั้ง"
+                    />
+                    {confirmPassword && form.password !== confirmPassword && (
+                      <p className="text-red-500 text-xs mt-1">⚠️ รหัสผ่านไม่ตรงกัน</p>
+                    )}
+                    {confirmPassword && form.password === confirmPassword && (
+                      <p className="text-green-600 text-xs mt-1">✓ รหัสผ่านตรงกัน</p>
+                    )}
+                  </div>
+                </>
               )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อเต็ม</label>
@@ -474,19 +504,40 @@ export default function AdminUsersPage() {
       {/* Reset Password Modal */}
       {resetPasswordId && (
         <div className="modal-backdrop">
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-sm p-4 sm:p-6">
-            <h3 className="text-lg font-bold mb-4">เปลี่ยน Password</h3>
-            <input
-              type="password"
-              className="w-full"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="รหัสผ่านใหม่"
-            />
-            {resetMsg && <p className="text-green-600 text-sm mt-2">✓ {resetMsg}</p>}
-            <div className="flex gap-3 justify-end mt-4">
-              <button className="btn-secondary" onClick={() => { setResetPasswordId(null); setNewPassword('') }}>ยกเลิก</button>
-              <button className="btn-primary" onClick={handleResetPassword} disabled={!newPassword.trim()}>ยืนยัน</button>
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-sm p-4 sm:p-6 space-y-4">
+            <h3 className="text-lg font-bold">เปลี่ยน Password</h3>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">รหัสผ่านใหม่</label>
+              <input
+                type="password"
+                className="w-full"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="รหัสผ่านใหม่"
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">ยืนยันรหัสผ่านใหม่</label>
+              <input
+                type="password"
+                className={`w-full ${confirmNewPassword && newPassword !== confirmNewPassword ? 'border-red-400 focus:ring-red-300' : confirmNewPassword && newPassword === confirmNewPassword ? 'border-green-400 focus:ring-green-300' : ''}`}
+                value={confirmNewPassword}
+                onChange={(e) => { setConfirmNewPassword(e.target.value); setResetPasswordError('') }}
+                placeholder="พิมพ์รหัสผ่านอีกครั้ง"
+              />
+              {confirmNewPassword && newPassword !== confirmNewPassword && (
+                <p className="text-red-500 text-xs mt-1">⚠️ รหัสผ่านไม่ตรงกัน</p>
+              )}
+              {confirmNewPassword && newPassword === confirmNewPassword && (
+                <p className="text-green-600 text-xs mt-1">✓ รหัสผ่านตรงกัน</p>
+              )}
+            </div>
+            {resetPasswordError && <p className="text-red-600 text-sm">⚠️ {resetPasswordError}</p>}
+            {resetMsg && <p className="text-green-600 text-sm">✓ {resetMsg}</p>}
+            <div className="flex gap-3 justify-end">
+              <button className="btn-secondary" onClick={() => { setResetPasswordId(null); setNewPassword(''); setConfirmNewPassword(''); setResetPasswordError('') }}>ยกเลิก</button>
+              <button className="btn-primary" onClick={handleResetPassword} disabled={!newPassword.trim() || !confirmNewPassword.trim()}>ยืนยัน</button>
             </div>
           </div>
         </div>
