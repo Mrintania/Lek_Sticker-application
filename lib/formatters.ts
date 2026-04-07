@@ -40,6 +40,16 @@ export function formatThaiDateShort(date: Date | string): string {
   return `${day}-${month}-${year}`
 }
 
+export function formatThaiDateFull(date: Date | string): string {
+  const d = typeof date === 'string' ? new Date(date + 'T00:00:00') : date
+  const dow = d.getDay() // 0=Sun
+  const dayIdx = dow === 0 ? 6 : dow - 1
+  const day = d.getDate()
+  const month = THAI_MONTHS[d.getMonth()]
+  const year = toBuddhistYear(d.getFullYear())
+  return `${THAI_DAYS[dayIdx]}ที่ ${day} ${month} ${year}`
+}
+
 export function formatThaiMonthYear(year: number, month: number): string {
   return `${THAI_MONTHS[month - 1]} ${toBuddhistYear(year)}`
 }
