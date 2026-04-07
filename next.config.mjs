@@ -28,8 +28,6 @@ const nextConfig = {
 
     if (dev && !isServer) {
       // ใช้ deterministic IDs แทน sequential
-      // ทำให้ chunk ID ไม่เปลี่ยนเมื่อ route ใหม่ถูก compile
-      // ป้องกัน app/layout.js 404 ที่เกิดจาก chunk reorganization
       config.optimization.moduleIds = 'deterministic'
       config.optimization.chunkIds = 'deterministic'
     }

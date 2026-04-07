@@ -91,7 +91,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'ต้องกรอกรายการผลงานอย่างน้อย 1 รายการ' }, { status: 400 })
   }
   for (const item of items) {
-    if (!item.model_name?.trim()) return NextResponse.json({ error: 'กรุณากรอกชื่อรุ่น' }, { status: 400 })
     if (!item.quantity || item.quantity <= 0) return NextResponse.json({ error: 'จำนวนต้องมากกว่า 0' }, { status: 400 })
   }
 

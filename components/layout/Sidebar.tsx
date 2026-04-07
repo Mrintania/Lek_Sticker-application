@@ -279,6 +279,15 @@ export default function Sidebar() {
           ))}
         </nav>
 
+        {/* Footer copyright */}
+        <div className={`flex-shrink-0 border-t border-gray-100 px-3 py-3 ${collapsed ? 'lg:hidden' : ''}`}>
+          <p className="text-[11px] text-gray-400 text-center leading-relaxed">
+            © {new Date().getFullYear()} สร้างโดย{' '}
+            <span className="font-semibold text-gray-500">AJ.NUI</span>
+          </p>
+          <p className="text-[10px] text-gray-300 text-center mt-0.5">v1.2.0</p>
+        </div>
+
       </aside>
 
       {/* Logout Confirm Modal */}

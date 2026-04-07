@@ -1,10 +1,10 @@
 {
   "name": "lek_sticker",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "main": "index.js",
   "scripts": {
-    "dev": "concurrently -n \"next,warmup\" -c \"cyan,yellow\" \"next dev\" \"node scripts/dev-warmup.mjs\"",
-    "dev:clean": "rm -rf .next && concurrently -n \"next,warmup\" -c \"cyan,yellow\" \"next dev\" \"node scripts/dev-warmup.mjs\"",
+    "dev": "concurrently -n \"next,warmup\" -c \"cyan,yellow\" \"NODE_OPTIONS='--max-old-space-size=4096' next dev --turbopack\" \"node scripts/dev-warmup.mjs\"",
+    "dev:clean": "rm -rf .next && concurrently -n \"next,warmup\" -c \"cyan,yellow\" \"NODE_OPTIONS='--max-old-space-size=4096' next dev --turbopack\" \"node scripts/dev-warmup.mjs\"",
     "build": "next build",
     "start": "next start",
     "tunnel": "ngrok http 3000",

@@ -12,8 +12,10 @@ export interface JWTPayload {
   fullName?: string
 }
 
+export const SESSION_DURATION_SEC = 60 * 60 * 8 // 8 ชั่วโมง
+
 export function signToken(payload: JWTPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d', algorithm: 'HS256' })
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: '8h', algorithm: 'HS256' })
 }
 
 export function verifyToken(token: string): JWTPayload | null {
@@ -46,6 +48,6 @@ export const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
   sameSite: 'lax' as const,
-  maxAge: 60 * 60 * 24 * 7, // 7 days
+  maxAge: SESSION_DURATION_SEC,
   path: '/',
 }

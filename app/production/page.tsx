@@ -242,8 +242,8 @@ export default function ProductionPage() {
   async function saveRecord(machineId: number) {
     setSavingRecord(machineId)
     const items = getItemsForMachine(machineId)
-      .filter(i => i.model_name.toString().trim() && Number(i.quantity) > 0)
-      .map(i => ({ model_name: String(i.model_name).trim(), quantity: Number(i.quantity) }))
+      .filter(i => Number(i.quantity) > 0)
+      .map(i => ({ model_name: '', quantity: Number(i.quantity) }))
 
     const res = await fetch('/api/production/records', {
       method: 'POST',
@@ -599,8 +599,22 @@ export default function ProductionPage() {
                         const currentVal = slot === 1 ? asg.slot1 : asg.slot2
                         const currentEmp = slot === 1 ? emp1 : emp2
                         return (
-                          <div key={slot} className="relative">
-                            <label className="block text-xs text-gray-400 mb-1">คนที่ {slot}</label>
+                          <div key={slot}>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="text-xs text-gray-400">คนที่ {slot}</label>
+                              {currentVal && (
+                                <button
+                                  className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+                                  onClick={() => {
+                                    const newAsg = { ...getAssignmentForMachine(machine.id), [`slot${slot}`]: '' }
+                                    setAssignmentEdits(prev => ({ ...prev, [machine.id]: newAsg }))
+                                    triggerAutoSaveAssignment(machine.id, newAsg)
+                                  }}
+                                >
+                                  ล้างค่า
+                                </button>
+                              )}
+                            </div>
                             <div className="relative">
                               {currentEmp && (
                                 <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-5 h-5 bg-teal-100 rounded-full flex items-center justify-center text-teal-700 text-xs font-bold pointer-events-none z-10">
@@ -634,36 +648,28 @@ export default function ProductionPage() {
                   <div className="px-4 py-3">
                     <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2.5">รายการผลงาน</p>
 
-                    {/* Column headers */}
-                    {items.some(i => i.model_name || i.quantity) && (
-                      <div className="grid gap-2 mb-1 px-0.5" style={{ gridTemplateColumns: '1fr 6rem 1.5rem' }}>
-                        <span className="text-xs text-gray-400">ชื่อรุ่น</span>
-                        <span className="text-xs text-gray-400 text-right">จำนวน (ชิ้น)</span>
-                        <span />
+                    {/* Column header */}
+                    {items.some(i => i.quantity) && (
+                      <div className="flex justify-end mb-1 px-0.5">
+                        <span className="text-xs text-gray-400">จำนวน (ชิ้น)</span>
                       </div>
                     )}
 
                     <div className="space-y-1.5">
                       {items.map((item, idx) => (
-                        <div key={idx} className="grid items-center gap-2" style={{ gridTemplateColumns: '1fr 6rem 1.5rem' }}>
-                          <input
-                            type="text"
-                            placeholder="ชื่อรุ่น"
-                            className="text-sm border border-gray-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-teal-300 focus:border-teal-400 outline-none w-full transition-all"
-                            value={item.model_name}
-                            onChange={(e) => updateItem(machine.id, idx, 'model_name', e.target.value)}
-                          />
+                        <div key={idx} className="flex items-center gap-2">
+                          <span className="text-xs text-gray-400 w-5 text-center">{idx + 1}.</span>
                           <input
                             type="number"
                             placeholder="0"
-                            className="text-sm border border-gray-200 rounded-xl px-3 py-2 text-right focus:ring-2 focus:ring-teal-300 focus:border-teal-400 outline-none w-full transition-all"
+                            className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2 text-right focus:ring-2 focus:ring-teal-300 focus:border-teal-400 outline-none transition-all"
                             min={0}
                             value={item.quantity}
                             onChange={(e) => updateItem(machine.id, idx, 'quantity', e.target.value)}
                           />
                           <button
                             onClick={() => removeItem(machine.id, idx)}
-                            className="w-6 h-6 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors"
+                            className="w-6 h-6 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors flex-shrink-0"
                           >
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
@@ -680,7 +686,7 @@ export default function ProductionPage() {
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
                       </svg>
-                      เพิ่มรุ่น
+                      เพิ่มรายการ
                     </button>
                   </div>
 
