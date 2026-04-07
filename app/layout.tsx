@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import Sidebar from '@/components/layout/Sidebar'
+import SessionTimeoutModal from '@/components/SessionTimeoutModal'
 
 export const metadata: Metadata = {
   title: 'ระบบบริหารจัดการ | เล็กสติ๊กเกอร์',
@@ -18,6 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
           </main>
         </div>
+        <SessionTimeoutModal />
       </body>
     </html>
   )
