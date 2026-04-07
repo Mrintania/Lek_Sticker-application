@@ -174,6 +174,8 @@ export default function SettingsPage() {
 
   const canEdit = user?.role === 'admin'
   const canViewHolidays = user?.role === 'admin' || user?.role === 'manager'
+  const canManageHolidays = canViewHolidays // manager และ admin แก้ไขวันหยุดได้
+  const canUploadScans = canViewHolidays // manager และ admin อัปโหลดสแกนได้
 
   // ── Diligence bonus settings ─────────────────────────────────────────────────
   const [diligence, setDiligence] = useState({
@@ -482,7 +484,7 @@ export default function SettingsPage() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold text-gray-700">🇹🇭 วันหยุดนักขัตฤกษ์ไทย</h4>
-              {canEdit && (
+              {canManageHolidays && (
                 <button
                   className="text-xs px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors"
                   onClick={() => { setShowAddForm(showAddForm === 'thai_national' ? null : 'thai_national'); setNewHoliday({ date: '', name: '' }) }}
@@ -516,7 +518,7 @@ export default function SettingsPage() {
                     <span className={`text-sm ${h.is_active ? 'text-gray-800' : 'text-gray-400 line-through'}`}>{h.name}</span>
                     <span className="text-xs text-gray-400 ml-2">{h.date}</span>
                   </div>
-                  {canEdit && (
+                  {canManageHolidays && (
                     <button
                       onClick={() => toggleHoliday(h)}
                       className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${h.is_active ? 'bg-green-500' : 'bg-gray-300'}`}
@@ -534,7 +536,7 @@ export default function SettingsPage() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold text-gray-700">🏢 วันหยุดบริษัท</h4>
-              {canEdit && (
+              {canManageHolidays && (
                 <button
                   className="text-xs px-2.5 py-1 bg-green-50 hover:bg-green-100 text-green-600 rounded-lg transition-colors"
                   onClick={() => { setShowAddForm(showAddForm === 'company' ? null : 'company'); setNewHoliday({ date: '', name: '' }) }}
@@ -568,7 +570,7 @@ export default function SettingsPage() {
                     <span className="text-sm text-gray-800">{h.name}</span>
                     <span className="text-xs text-gray-400 ml-2">{h.date}</span>
                   </div>
-                  {canEdit && (
+                  {canManageHolidays && (
                     <button onClick={() => deleteHoliday(h.id)}
                       className="p-1 text-gray-400 hover:text-red-500 transition-colors" title="ลบวันหยุดนี้">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -584,7 +586,7 @@ export default function SettingsPage() {
       )}
 
       {/* ── Section 3: อัพโหลดข้อมูล ── */}
-      {canEdit && (
+      {canUploadScans && (
         <AccordionSection
           id="upload"
           icon="📤"
