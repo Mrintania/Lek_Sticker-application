@@ -26,6 +26,15 @@ const reportItems: NavItem[] = [
 
 const REPORT_PATHS = reportItems.map((i) => i.href)
 
+const financeItems: NavItem[] = [
+  { href: '/finance', label: 'ภาพรวมการเงิน', icon: '💹' },
+  { href: '/finance/income', label: 'รายรับ', icon: '📥' },
+  { href: '/finance/expenses', label: 'รายจ่าย', icon: '📤' },
+  { href: '/finance/od', label: 'บัญชี OD', icon: '🏦' },
+  { href: '/finance/recurring', label: 'รายจ่ายประจำ', icon: '🔁' },
+]
+const FINANCE_PATHS = financeItems.map((i) => i.href)
+
 const topItems: NavItem[] = [
   { href: '/me', label: 'หน้าของฉัน', icon: '🏠', roles: ['user'] },
   { href: '/dashboard', label: 'ภาพรวม', icon: '📊', roles: ['admin', 'manager'] },
@@ -50,6 +59,7 @@ export default function Sidebar() {
   const { user, logout } = useCurrentUser()
   const [collapsed, setCollapsed] = useState(false)
   const [reportsOpen, setReportsOpen] = useState(false)
+  const [financeOpen, setFinanceOpen] = useState(false)
   const [pendingLeaveCount, setPendingLeaveCount] = useState(0)
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -64,6 +74,9 @@ export default function Sidebar() {
   useEffect(() => {
     if (pathname && REPORT_PATHS.includes(pathname)) {
       setReportsOpen(true)
+    }
+    if (pathname && FINANCE_PATHS.some(p => pathname.startsWith(p))) {
+      setFinanceOpen(true)
     }
   }, [pathname])
 
@@ -277,6 +290,50 @@ export default function Sidebar() {
               badge={item.href === '/leaves' && canManage && pendingLeaveCount > 0 ? pendingLeaveCount : undefined}
             />
           ))}
+
+          {/* การเงิน dropdown — admin/manager only */}
+          {(role === 'admin' || role === 'manager') && (
+            <div>
+              <button
+                onClick={() => setFinanceOpen(!financeOpen)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                  pathname != null && FINANCE_PATHS.some(p => pathname.startsWith(p))
+                    ? 'bg-blue-50 text-blue-700 font-semibold'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                } ${collapsed ? 'lg:justify-center' : 'justify-between'}`}
+                title={collapsed ? 'การเงิน' : undefined}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-base flex-shrink-0">💰</span>
+                  {!collapsed && <span>การเงิน</span>}
+                </div>
+                {!collapsed && (
+                  <svg
+                    className={`w-4 h-4 flex-shrink-0 transition-transform duration-200 ${financeOpen ? 'rotate-180' : ''}`}
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                )}
+              </button>
+
+              {!collapsed && financeOpen && (
+                <div className="mt-0.5 ml-3 pl-3 border-l-2 border-gray-100 space-y-0.5">
+                  {financeItems.map((item) => (
+                    <NavLink key={item.href} item={item} pathname={pathname} collapsed={false} sub />
+                  ))}
+                </div>
+              )}
+
+              {collapsed && (
+                <div className="mt-0.5 space-y-0.5 hidden lg:block">
+                  {financeItems.map((item) => (
+                    <NavLink key={item.href} item={item} pathname={pathname} collapsed={true} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </nav>
 
         {/* Footer copyright */}
@@ -285,7 +342,7 @@ export default function Sidebar() {
             © {new Date().getFullYear()} สร้างโดย{' '}
             <span className="font-semibold text-gray-500">AJ.NUI</span>
           </p>
-          <p className="text-[10px] text-gray-300 text-center mt-0.5">v1.2.0</p>
+          <p className="text-[10px] text-gray-300 text-center mt-0.5">v1.3.0</p>
         </div>
 
       </aside>

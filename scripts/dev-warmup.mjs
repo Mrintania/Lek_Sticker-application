@@ -36,6 +36,13 @@ const ROUTES = [
   '/api/production/records',
   '/api/production/summary',
   '/api/holidays',
+  // Finance routes
+  '/finance',
+  '/finance/income',
+  '/finance/expenses',
+  '/finance/od',
+  '/finance/recurring',
+  '/api/finance/summary',
 ]
 
 const yellow = (s) => `\x1b[33m${s}\x1b[0m`
