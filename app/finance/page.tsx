@@ -113,7 +113,7 @@ export default function FinanceDashboard() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="month" tickFormatter={m => THAI_MONTHS_SHORT[m - 1]} tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} tickFormatter={v => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
-                <Tooltip formatter={(v: number) => formatCurrency(v)} labelFormatter={m => THAI_MONTHS[Number(m) - 1]} />
+                <Tooltip formatter={(v) => formatCurrency(Number(v))} labelFormatter={m => THAI_MONTHS[Number(m) - 1]} />
                 <Legend wrapperStyle={{ fontSize: 12 }} formatter={v => v === 'income' ? 'รายรับ' : 'รายจ่าย'} />
                 <Bar dataKey="income" fill="#22c55e" radius={[3, 3, 0, 0]} />
                 <Bar dataKey="expense" fill="#ef4444" radius={[3, 3, 0, 0]} />
@@ -136,7 +136,7 @@ export default function FinanceDashboard() {
                     <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                <Tooltip formatter={(v) => formatCurrency(Number(v))} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
               </PieChart>
             </ResponsiveContainer>

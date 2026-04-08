@@ -1,5 +1,5 @@
 #!/bin/bash
-# แก้ไข macOS file limit สำหรับ Next.js dev server
+# แก้ไข macOS file limit สำหรับ Next.js + Turbopack dev server
 # รันด้วย: sudo bash scripts/fix-macos-filelimit.sh
 
 echo "🔧 กำลังเพิ่ม macOS file limit..."
@@ -41,5 +41,17 @@ sudo chmod 644 $PLIST
 sudo chown root:wheel $PLIST
 sudo launchctl load -w $PLIST 2>/dev/null || true
 
+# เพิ่ม ulimit ใน shell profile เพื่อให้มีผลทุก terminal session
+ULIMIT_LINE="ulimit -n 65536"
+for PROFILE in "$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.bash_profile"; do
+  if [ -f "$PROFILE" ] && ! grep -q "ulimit -n 65536" "$PROFILE"; then
+    echo "" >> "$PROFILE"
+    echo "# Next.js / Turbopack file descriptor limit" >> "$PROFILE"
+    echo "$ULIMIT_LINE" >> "$PROFILE"
+    echo "✅ เพิ่ม ulimit ใน $PROFILE แล้ว"
+  fi
+done
+
+echo ""
 echo "✅ ตั้งค่าถาวรแล้ว (มีผลหลัง reboot)"
-echo "💡 ลองรัน: npm run dev:clean"
+echo "💡 รีสตาร์ท terminal แล้วรัน: npm run dev"

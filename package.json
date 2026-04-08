@@ -3,8 +3,9 @@
   "version": "1.3.0",
   "main": "index.js",
   "scripts": {
-    "dev": "concurrently -n \"next,warmup\" -c \"cyan,yellow\" \"NODE_OPTIONS='--max-old-space-size=4096' next dev --turbopack\" \"node scripts/dev-warmup.mjs\"",
-    "dev:clean": "rm -rf .next && mkdir -p .next/static/development && concurrently -n \"next,warmup\" -c \"cyan,yellow\" \"NODE_OPTIONS='--max-old-space-size=4096' next dev --turbopack\" \"node scripts/dev-warmup.mjs\"",
+    "dev": "concurrently -n \"next,warmup\" -c \"cyan,yellow\" \"node scripts/dev.mjs\" \"node scripts/dev-warmup.mjs\"",
+    "dev:clean": "rm -rf .next && mkdir -p .next/static/development .next/server && concurrently -n \"next,warmup\" -c \"cyan,yellow\" \"node scripts/dev.mjs\" \"node scripts/dev-warmup.mjs\"",
+    "typecheck": "tsc --noEmit",
     "build": "next build",
     "start": "next start",
     "tunnel": "ngrok http 3000",
