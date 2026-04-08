@@ -81,9 +81,109 @@ export function getDb(): Database.Database {
       )`,
       `CREATE INDEX IF NOT EXISTS idx_delivery_records_date ON delivery_records(date)`,
       `CREATE INDEX IF NOT EXISTS idx_delivery_items_record ON delivery_items(record_id)`,
+      // Finance tables
+      `CREATE TABLE IF NOT EXISTS finance_recurring_templates (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        expense_type   TEXT NOT NULL CHECK(expense_type IN ('fixed','variable')),
+        category       TEXT NOT NULL,
+        sub_category   TEXT,
+        default_amount REAL NOT NULL DEFAULT 0,
+        note           TEXT,
+        is_active      INTEGER DEFAULT 1,
+        created_by     TEXT,
+        created_at     TEXT DEFAULT (datetime('now')),
+        updated_at     TEXT DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS finance_income (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        year           INTEGER NOT NULL,
+        month          INTEGER NOT NULL,
+        income_type    TEXT NOT NULL CHECK(income_type IN ('print_order','other')),
+        quantity       REAL,
+        price_per_unit REAL,
+        amount         REAL NOT NULL,
+        category       TEXT,
+        note           TEXT,
+        entry_date     TEXT NOT NULL,
+        created_by     TEXT,
+        created_at     TEXT DEFAULT (datetime('now')),
+        updated_at     TEXT DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS finance_expenses (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        year           INTEGER NOT NULL,
+        month          INTEGER NOT NULL,
+        expense_type   TEXT NOT NULL CHECK(expense_type IN ('fixed','variable')),
+        category       TEXT NOT NULL,
+        sub_category   TEXT,
+        amount         REAL NOT NULL,
+        note           TEXT,
+        entry_date     TEXT NOT NULL,
+        from_recurring INTEGER DEFAULT 0,
+        recurring_id   INTEGER REFERENCES finance_recurring_templates(id),
+        created_by     TEXT,
+        created_at     TEXT DEFAULT (datetime('now')),
+        updated_at     TEXT DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS finance_od_accounts (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        bank_name      TEXT NOT NULL,
+        account_number TEXT NOT NULL,
+        credit_limit   REAL NOT NULL DEFAULT 0,
+        interest_rate  REAL NOT NULL DEFAULT 0,
+        is_active      INTEGER DEFAULT 1,
+        created_by     TEXT,
+        created_at     TEXT DEFAULT (datetime('now')),
+        updated_at     TEXT DEFAULT (datetime('now')),
+        UNIQUE(bank_name, account_number)
+      )`,
+      `CREATE TABLE IF NOT EXISTS finance_od_entries (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        od_account_id  INTEGER NOT NULL REFERENCES finance_od_accounts(id) ON DELETE CASCADE,
+        year           INTEGER NOT NULL,
+        month          INTEGER NOT NULL,
+        balance_used   REAL NOT NULL DEFAULT 0,
+        interest_amount REAL NOT NULL DEFAULT 0,
+        payment_amount REAL DEFAULT 0,
+        note           TEXT,
+        entry_date     TEXT NOT NULL,
+        created_by     TEXT,
+        created_at     TEXT DEFAULT (datetime('now')),
+        updated_at     TEXT DEFAULT (datetime('now')),
+        UNIQUE(od_account_id, year, month)
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_finance_income_ym ON finance_income(year, month)`,
+      `CREATE INDEX IF NOT EXISTS idx_finance_income_date ON finance_income(entry_date)`,
+      `CREATE INDEX IF NOT EXISTS idx_finance_expenses_ym ON finance_expenses(year, month)`,
+      `CREATE INDEX IF NOT EXISTS idx_finance_expenses_type ON finance_expenses(expense_type)`,
+      `CREATE INDEX IF NOT EXISTS idx_finance_od_entries_ym ON finance_od_entries(year, month)`,
+      `CREATE INDEX IF NOT EXISTS idx_finance_od_entries_account ON finance_od_entries(od_account_id)`,
     ]
     for (const sql of migrations) {
       try { db.exec(sql) } catch {}
+    }
+
+    // Seed finance recurring templates (ต้องทำหลัง migrations สร้าง table แล้ว)
+    const recurringExists = db.prepare("SELECT id FROM finance_recurring_templates LIMIT 1").get()
+    if (!recurringExists) {
+      const insertTemplate = db.prepare(
+        `INSERT OR IGNORE INTO finance_recurring_templates (expense_type, category, default_amount) VALUES (?, ?, ?)`
+      )
+      const templates: [string, string, number][] = [
+        ['fixed', 'car_installment', 0],
+        ['fixed', 'rent', 0],
+        ['fixed', 'salary_total', 0],
+        ['fixed', 'insurance', 0],
+        ['variable', 'raw_materials', 0],
+        ['variable', 'electricity', 0],
+        ['variable', 'transport', 0],
+        ['variable', 'maintenance', 0],
+        ['variable', 'ot', 0],
+      ]
+      const seedTemplates = db.transaction(() => {
+        for (const [type, cat, amt] of templates) insertTemplate.run(type, cat, amt)
+      })
+      seedTemplates()
     }
 
     // อัปเดตค่า monthly_max_absent เป็น 3.5 (กฎใหม่) ถ้ายังเป็นค่าเก่า (5)

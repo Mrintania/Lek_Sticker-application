@@ -1,8 +1,8 @@
 # 🖨️ ระบบบริหารจัดการ เล็กสติ๊กเกอร์
 
-> ระบบบริหารจัดการพนักงาน บันทึกการเข้างาน เงินเดือน งานผลิต และงานส่ง สำหรับร้านเล็กสติ๊กเกอร์
+> ระบบบริหารจัดการพนักงาน บันทึกการเข้างาน เงินเดือน งานผลิต งานส่ง และการเงินบริษัท สำหรับร้านเล็กสติ๊กเกอร์
 
-สร้างโดย **AJ.NUI** &nbsp;|&nbsp; Version **1.2.0**
+สร้างโดย **AJ.NUI** &nbsp;|&nbsp; Version **1.3.0**
 
 ![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
@@ -36,6 +36,13 @@
 - Dashboard ผลผลิต / งานส่ง แบบ real-time
 - กำหนด assignment พนักงาน-เครื่องจักร
 
+### 💹 การเงินบริษัท *(ใหม่ v1.3.0)*
+- **Dashboard การเงิน** — สรุปกำไร/ขาดทุน พร้อม Bar Chart 12 เดือน และ Pie Chart สัดส่วนรายจ่าย
+- **รายรับ** — บันทึกยอดส่งพิมพ์และรายรับอื่นๆ
+- **รายจ่าย** — แยกประเภทคงที่/ผันแปร พร้อมระบบนำเข้ารายจ่ายประจำอัตโนมัติ
+- **บัญชี OD** — ติดตามยอด OD แยกรายธนาคาร พร้อมคำนวณดอกเบี้ยอัตโนมัติ
+- **Template รายจ่ายประจำ** — กำหนดรายจ่ายประจำล่วงหน้าและนำเข้าทีเดียว
+
 ### ⚙️ ตั้งค่าระบบ
 - จัดการวันหยุดสาธารณะ (Admin + Manager)
 - อัปโหลดไฟล์สแกนนิ้วมือ (Admin + Manager)
@@ -44,6 +51,16 @@
 ---
 
 ## 🆕 ประวัติการอัปเดต
+
+### v1.3.0 — เมษายน 2569
+- **💹 ระบบการเงินบริษัท** — Dashboard รายรับ/รายจ่าย กำไร/ขาดทุน พร้อม Bar Chart และ Pie Chart
+- **📥 บันทึกรายรับ** — รองรับยอดส่งพิมพ์และรายรับอื่นๆ แยกประเภท
+- **📤 บันทึกรายจ่าย** — แยกประเภทคงที่/ผันแปร กรองและดู summary รายเดือน
+- **🔁 Template รายจ่ายประจำ** — กำหนด template ล่วงหน้า กด apply ครั้งเดียวนำเข้าได้ทั้งหมด (idempotent)
+- **🏦 บัญชี OD** — บันทึกยอด OD แยกธนาคาร คำนวณดอกเบี้ยอัตโนมัติ (ยอด × rate / 12 / 100) พร้อมประวัติรายเดือน
+- **🔒 Route protection** — `/finance` และ `/api/finance` ต้องการ Manager/Admin เท่านั้น
+- **🛠️ dev:clean fix** — แก้ ENOENT `_buildManifest.js.tmp` โดย pre-create `.next/static/development` ก่อน Turbopack start
+- **🚀 GitHub Actions** — เพิ่ม `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24` รองรับ Node.js 24 runtime
 
 ### v1.2.0 — เมษายน 2569
 - **🔐 Session Timeout** — Auto logout หลัง idle 30 นาที พร้อม warning modal countdown 5 นาที
@@ -135,6 +152,7 @@ sudo bash scripts/fix-macos-filelimit.sh
 | บันทึกงานผลิต / ส่ง | ✅ | ✅ | ❌ |
 | จัดการวันหยุด | ✅ | ✅ | ❌ |
 | อัปโหลดสแกนนิ้ว | ✅ | ✅ | ❌ |
+| **ระบบการเงินบริษัท** | ✅ | ✅ | ❌ |
 | จัดการผู้ใช้งาน | ✅ | ❌ | ❌ |
 | ดู Audit Log | ✅ | ❌ | ❌ |
 | หน้าของฉัน / ใบลา | ✅ | ✅ | ✅ |
@@ -154,12 +172,14 @@ lek_sticker/
 │   │   ├── delivery/
 │   │   ├── payroll/
 │   │   ├── leaves/
-│   │   └── holidays/
+│   │   ├── holidays/
+│   │   └── finance/              # summary / income / expenses / od / recurring
 │   ├── dashboard/
 │   ├── daily/ weekly/ monthly/ employee/
 │   ├── production/
 │   ├── delivery/
 │   ├── payroll/
+│   ├── finance/                  # dashboard / income / expenses / od / recurring
 │   ├── settings/
 │   └── admin/
 ├── components/
