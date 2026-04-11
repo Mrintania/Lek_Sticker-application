@@ -135,15 +135,29 @@ export default function DailyPage() {
 
   const { sortKey, sortDir, handleSort, sorted } = useSortable<DailySortKey>('name')
 
+  const [specialWorkDaySet, setSpecialWorkDaySet] = useState<Set<string>>(new Set())
+
+  // Load special work days for selected month
+  useEffect(() => {
+    const [y, m] = selectedDate.split('-')
+    fetch(`/api/special-work-days?year=${y}&month=${Number(m)}`)
+      .then(r => r.ok ? r.json() : [])
+      .then((data: { date: string }[]) => setSpecialWorkDaySet(new Set(data.map(d => d.date))))
+      .catch(() => {})
+  }, [selectedDate.slice(0, 7)])
+
+  const isSpecialWorkDay = specialWorkDaySet.has(selectedDate)
+
   const isWorkingDay = useMemo(() => {
     if (!selectedDate) return false
+    if (isSpecialWorkDay) return true // วันทำงานพิเศษ = นับเป็นวันทำงานเสมอ
     const holidayName = holidayDates.get(selectedDate)
     const isSunday = new Date(selectedDate + 'T00:00:00').getDay() === 0
     if (holidayName || isSunday) return false
     const jsDay = new Date(selectedDate + 'T00:00:00').getDay()
     const ourDow = jsDay === 0 ? 6 : jsDay - 1
     return settings.workDays.includes(ourDow)
-  }, [selectedDate, holidayDates, settings.workDays])
+  }, [selectedDate, holidayDates, settings.workDays, isSpecialWorkDay])
 
   const rawRecords = useMemo(() => {
     const all = getDailyRecords(master, selectedDate)
@@ -226,8 +240,11 @@ export default function DailyPage() {
               {isToday && (
                 <span className="text-xs font-semibold text-white bg-blue-500 px-2 py-0.5 rounded-lg">วันนี้</span>
               )}
-              {isSelectedHoliday && (
+              {isSelectedHoliday && !isSpecialWorkDay && (
                 <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-lg">🏖️ {holidayLabel}</span>
+              )}
+              {isSpecialWorkDay && (
+                <span className="text-xs font-semibold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-lg">🏭 วันทำงานพิเศษ</span>
               )}
             </div>
           </div>

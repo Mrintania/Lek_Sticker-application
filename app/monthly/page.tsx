@@ -33,7 +33,11 @@ export default function MonthlyPage() {
 
   const summary = useMemo(() => {
     if (!selected) return []
-    return getMonthlySummary(master, selected.year, selected.month, employees, settings)
+    const today = new Date()
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+    const isCurrentMonth = selected.year === today.getFullYear() && selected.month === today.getMonth() + 1
+    const cutoff = isCurrentMonth ? todayStr : undefined
+    return getMonthlySummary(master, selected.year, selected.month, employees, settings, cutoff)
   }, [master, selected, employees, settings])
 
   const { sortKey: mSortKey, sortDir: mSortDir, handleSort: mHandleSort, sorted: mSorted } = useSortable<MonthlySortKey>('name')

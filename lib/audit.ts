@@ -22,6 +22,7 @@ export type AuditAction =
   | 'settings.update'
   | 'settings.payroll_update'
   | 'scan.reset'
+  | 'scan.delete_range'
   | 'holiday.create'
   | 'holiday.update'
   | 'holiday.delete'
@@ -39,6 +40,8 @@ export type AuditAction =
   | 'delivery.record'
   | 'delivery.update'
   | 'delivery.delete'
+  | 'special_work_day.create'
+  | 'special_work_day.delete'
 
 export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   'auth.login': 'เข้าสู่ระบบ',
@@ -62,6 +65,7 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   'settings.update': 'แก้ไขการตั้งค่าระบบ',
   'settings.payroll_update': 'แก้ไขการตั้งค่าเงินเดือน',
   'scan.reset': 'ล้างข้อมูลสแกน',
+  'scan.delete_range': 'ลบสแกนตามช่วงวันที่',
   'holiday.create': 'เพิ่มวันหยุด',
   'holiday.update': 'แก้ไขวันหยุด',
   'holiday.delete': 'ลบวันหยุด',
@@ -79,6 +83,8 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   'delivery.record': 'บันทึกงานส่ง',
   'delivery.update': 'แก้ไขงานส่ง',
   'delivery.delete': 'ลบงานส่ง',
+  'special_work_day.create': 'เพิ่มวันทำงานพิเศษ',
+  'special_work_day.delete': 'ลบวันทำงานพิเศษ',
 }
 
 export const AUDIT_ACTION_COLORS: Record<AuditAction, string> = {
@@ -103,6 +109,7 @@ export const AUDIT_ACTION_COLORS: Record<AuditAction, string> = {
   'settings.update': 'bg-orange-100 text-orange-700',
   'settings.payroll_update': 'bg-orange-100 text-orange-700',
   'scan.reset': 'bg-red-100 text-red-700',
+  'scan.delete_range': 'bg-red-100 text-red-700',
   'holiday.create': 'bg-teal-100 text-teal-700',
   'holiday.update': 'bg-yellow-100 text-yellow-700',
   'holiday.delete': 'bg-red-100 text-red-700',
@@ -120,6 +127,8 @@ export const AUDIT_ACTION_COLORS: Record<AuditAction, string> = {
   'delivery.record': 'bg-emerald-100 text-emerald-700',
   'delivery.update': 'bg-emerald-100 text-emerald-700',
   'delivery.delete': 'bg-red-100 text-red-700',
+  'special_work_day.create': 'bg-purple-100 text-purple-700',
+  'special_work_day.delete': 'bg-red-100 text-red-700',
 }
 
 export function logAudit(

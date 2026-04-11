@@ -62,7 +62,8 @@ export async function POST(req: NextRequest) {
     logAudit(getDb(), user.username, 'auth.login', 'user', String(user.id), { role: user.role }, getIp(req))
 
     return res
-  } catch {
+  } catch (err) {
+    console.error('[login] error:', err)
     return NextResponse.json({ error: 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง' }, { status: 500 })
   }
 }

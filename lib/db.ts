@@ -81,6 +81,15 @@ export function getDb(): Database.Database {
       )`,
       `CREATE INDEX IF NOT EXISTS idx_delivery_records_date ON delivery_records(date)`,
       `CREATE INDEX IF NOT EXISTS idx_delivery_items_record ON delivery_items(record_id)`,
+      // Special work days (วันทำงานพิเศษ — ปกติหยุดแต่ให้มาทำงาน)
+      `CREATE TABLE IF NOT EXISTS special_work_days (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        date       TEXT NOT NULL UNIQUE,
+        reason     TEXT,
+        created_by TEXT,
+        created_at TEXT DEFAULT (datetime('now'))
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_special_work_days_date ON special_work_days(date)`,
       // Finance tables
       `CREATE TABLE IF NOT EXISTS finance_recurring_templates (
         id             INTEGER PRIMARY KEY AUTOINCREMENT,

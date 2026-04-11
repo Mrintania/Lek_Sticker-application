@@ -55,7 +55,12 @@ export default function DashboardPage() {
 
   const monthlySummary = useMemo(() => {
     if (!selectedYear || !selectedMonth) return []
-    return getMonthlySummary(master, selectedYear, selectedMonth, employees, settings)
+    // สำหรับเดือนปัจจุบัน → ตัดที่วันนี้ ไม่นับวันในอนาคตเป็นวันขาดงาน
+    const today = new Date()
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+    const isCurrentMonth = selectedYear === today.getFullYear() && selectedMonth === today.getMonth() + 1
+    const cutoff = isCurrentMonth ? todayStr : undefined
+    return getMonthlySummary(master, selectedYear, selectedMonth, employees, settings, cutoff)
   }, [master, selectedYear, selectedMonth, employees, settings])
 
   const teamStats = useMemo(() => {

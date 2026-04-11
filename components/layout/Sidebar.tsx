@@ -51,8 +51,9 @@ const bottomItems: NavItem[] = [
   { href: '/employees', label: 'จัดการพนักงาน', icon: '👥', roles: ['admin', 'manager'] },
   { href: '/admin/users', label: 'จัดการผู้ใช้', icon: '🔑', roles: ['admin'] },
   { href: '/admin/audit', label: 'บันทึกการใช้งาน', icon: '🔍', roles: ['admin'] },
-  { href: '/settings', label: 'ตั้งค่า', icon: '⚙️', roles: ['admin', 'manager'] },
 ]
+
+const settingsItem: NavItem = { href: '/settings', label: 'ตั้งค่า', icon: '⚙️', roles: ['admin', 'manager'] }
 
 export default function Sidebar() {
   const pathname = usePathname()
@@ -334,6 +335,13 @@ export default function Sidebar() {
               )}
             </div>
           )}
+          {/* ── ตั้งค่า — ล่างสุด ── */}
+          {isVisible(settingsItem) && (
+            <>
+              <div className="mt-1 border-t border-gray-100" />
+              <NavLink item={settingsItem} pathname={pathname} collapsed={collapsed} />
+            </>
+          )}
         </nav>
 
         {/* Footer copyright */}
@@ -342,7 +350,7 @@ export default function Sidebar() {
             © {new Date().getFullYear()} สร้างโดย{' '}
             <span className="font-semibold text-gray-500">AJ.NUI</span>
           </p>
-          <p className="text-[10px] text-gray-300 text-center mt-0.5">v1.3.0</p>
+          <p className="text-[10px] text-gray-300 text-center mt-0.5">v1.4.0</p>
         </div>
 
       </aside>
