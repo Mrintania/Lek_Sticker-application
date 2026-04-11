@@ -64,15 +64,67 @@ export default function SettingsPage() {
     })
   }
 
-  // Reset scan data
+  // Reset scan data (all)
   const [showResetModal, setShowResetModal] = useState(false)
   const [resetConfirmText, setResetConfirmText] = useState('')
   const [resetting, setResetting] = useState(false)
   const [resetMsg, setResetMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
+  const [newSpecialDate, setNewSpecialDate] = useState('')
+  const [newSpecialReason, setNewSpecialReason] = useState('')
+  const [specialMsg, setSpecialMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [addingSpecial, setAddingSpecial] = useState(false)
+
+  async function addSpecialWorkDay() {
+    if (!newSpecialDate) return
+    setAddingSpecial(true)
+    setSpecialMsg(null)
+    try {
+      const res = await fetch('/api/special-work-days', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: newSpecialDate, reason: newSpecialReason }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setSpecialMsg({ type: 'success', text: data.message })
+        setNewSpecialDate('')
+        setNewSpecialReason('')
+        loadSpecialWorkDays()
+      } else {
+        setSpecialMsg({ type: 'error', text: data.error ?? 'เกิดข้อผิดพลาด' })
+      }
+    } catch {
+      setSpecialMsg({ type: 'error', text: 'เชื่อมต่อไม่ได้' })
+    } finally {
+      setAddingSpecial(false)
+    }
+  }
+
+  async function deleteSpecialWorkDay(id: number, date: string) {
+    if (!confirm(`ลบวันทำงานพิเศษ ${date}?`)) return
+    const res = await fetch(`/api/special-work-days/${id}`, { method: 'DELETE' })
+    if (res.ok) {
+      setSpecialMsg({ type: 'success', text: `ลบ ${date} แล้ว` })
+      loadSpecialWorkDays()
+    }
+  }
+
+  // Delete scan by date range
+  const [showRangeModal, setShowRangeModal] = useState(false)
+  const [rangeFrom, setRangeFrom] = useState('')
+  const [rangeTo, setRangeTo] = useState('')
+  const [deletingRange, setDeletingRange] = useState(false)
+  const [rangeMsg, setRangeMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
   // Holiday management
   const currentYear = new Date().getFullYear()
   const [holidayYear, setHolidayYear] = useState(currentYear)
+
+  // Special work days
+  const [specialWorkDays, setSpecialWorkDays] = useState<{ id: number; date: string; reason: string | null; created_by: string }[]>([])
+  const [specialYear, setSpecialYear] = useState(currentYear)
+  const [specialMonth, setSpecialMonth] = useState(new Date().getMonth() + 1)
   const [holidays, setHolidays] = useState<Holiday[]>([])
   const [holidayMsg, setHolidayMsg] = useState('')
   const [showAddForm, setShowAddForm] = useState<'thai_national' | 'company' | null>(null)
@@ -84,6 +136,13 @@ export default function SettingsPage() {
   }, [holidayYear])
 
   useEffect(() => { loadHolidays() }, [loadHolidays])
+
+  const loadSpecialWorkDays = useCallback(() => {
+    fetch(`/api/special-work-days?year=${specialYear}&month=${specialMonth}`)
+      .then(r => r.json()).then(setSpecialWorkDays).catch(() => {})
+  }, [specialYear, specialMonth])
+
+  useEffect(() => { loadSpecialWorkDays() }, [loadSpecialWorkDays])
 
   async function toggleHoliday(h: Holiday) {
     await fetch(`/api/holidays/${h.id}`, {
@@ -123,6 +182,33 @@ export default function SettingsPage() {
   useEffect(() => { loadSettings() }, [])
 
   useEffect(() => { setForm({ ...settings }) }, [settings])
+
+  async function handleDeleteRange() {
+    if (!rangeFrom || !rangeTo) return
+    setDeletingRange(true)
+    setRangeMsg(null)
+    try {
+      const res = await fetch('/api/scans/by-date-range', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dateFrom: rangeFrom, dateTo: rangeTo }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        clearAttendance()
+        setRangeMsg({ type: 'success', text: data.message })
+        setShowRangeModal(false)
+        setRangeFrom('')
+        setRangeTo('')
+      } else {
+        setRangeMsg({ type: 'error', text: data.error ?? 'เกิดข้อผิดพลาด' })
+      }
+    } catch {
+      setRangeMsg({ type: 'error', text: 'เชื่อมต่อไม่ได้' })
+    } finally {
+      setDeletingRange(false)
+    }
+  }
 
   async function handleResetScans() {
     setResetting(true)
@@ -585,6 +671,111 @@ export default function SettingsPage() {
         </AccordionSection>
       )}
 
+      {/* ── Section: วันทำงานพิเศษ ── */}
+      {canViewHolidays && (
+        <AccordionSection
+          id="special-work-days"
+          icon="🏭"
+          title="วันทำงานพิเศษ"
+          subtitle="วันอาทิตย์หรือวันหยุดที่ให้พนักงานมาทำงาน (นับเป็นวันทำงานในระบบเงินเดือน)"
+          open={openSections.has('special-work-days')}
+          onToggle={toggleSection}
+        >
+          {/* Month selector */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-sm text-gray-500 shrink-0">กรองตามเดือน</p>
+            <select
+              value={specialYear}
+              onChange={(e) => setSpecialYear(Number(e.target.value))}
+              className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+            >
+              {[2024, 2025, 2026, 2027].map((y) => <option key={y} value={y}>{y}</option>)}
+            </select>
+            <select
+              value={specialMonth}
+              onChange={(e) => setSpecialMonth(Number(e.target.value))}
+              className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+            >
+              {['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'].map((m, i) => (
+                <option key={i+1} value={i+1}>{m}</option>
+              ))}
+            </select>
+          </div>
+
+          {specialMsg && (
+            <div className={`text-sm px-3 py-2 rounded-lg ${specialMsg.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+              {specialMsg.type === 'success' ? '✅' : '❌'} {specialMsg.text}
+            </div>
+          )}
+
+          {/* Add new */}
+          {canManageHolidays && (
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 space-y-2">
+              <p className="text-sm font-medium text-gray-700">เพิ่มวันทำงานพิเศษ</p>
+              <div className="flex gap-2 flex-wrap">
+                <input
+                  type="date"
+                  value={newSpecialDate}
+                  onChange={(e) => setNewSpecialDate(e.target.value)}
+                  className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+                />
+                <input
+                  type="text"
+                  value={newSpecialReason}
+                  onChange={(e) => setNewSpecialReason(e.target.value)}
+                  placeholder="เหตุผล (เช่น ทำงานชดเชย, งานเร่งด่วน)"
+                  className="flex-1 min-w-40 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+                />
+                <button
+                  onClick={addSpecialWorkDay}
+                  disabled={!newSpecialDate || addingSpecial}
+                  className="px-4 py-1.5 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50 rounded-lg transition-colors"
+                >
+                  {addingSpecial ? '⏳' : '+ เพิ่ม'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* List */}
+          {specialWorkDays.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-4">ไม่มีวันทำงานพิเศษในเดือนนี้</p>
+          ) : (
+            <div className="space-y-1">
+              {specialWorkDays.map((s) => {
+                const d = new Date(s.date + 'T00:00:00')
+                const dayNames = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.']
+                const dayName = dayNames[d.getDay()]
+                const isSunday = d.getDay() === 0
+                return (
+                  <div key={s.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-100">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${isSunday ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'}`}>
+                        {dayName}
+                      </span>
+                      <span className="text-sm font-medium text-gray-800">{s.date}</span>
+                      {s.reason && <span className="text-xs text-gray-500">— {s.reason}</span>}
+                      <span className="text-xs text-gray-400">โดย {s.created_by}</span>
+                    </div>
+                    {canManageHolidays && (
+                      <button
+                        onClick={() => deleteSpecialWorkDay(s.id, s.date)}
+                        className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                        title="ลบ"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </AccordionSection>
+      )}
+
       {/* ── Section 3: อัพโหลดข้อมูล ── */}
       {canUploadScans && (
         <AccordionSection
@@ -620,6 +811,27 @@ export default function SettingsPage() {
             </div>
           )}
 
+          {rangeMsg && (
+            <div className={`text-sm px-3 py-2 rounded-lg ${rangeMsg.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+              {rangeMsg.type === 'success' ? '✅' : '❌'} {rangeMsg.text}
+            </div>
+          )}
+
+          <div className="flex items-start gap-3 p-3 bg-orange-50 rounded-lg border border-orange-200">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-800">ลบสแกนตามช่วงวันที่</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                ลบเฉพาะข้อมูลสแกนนิ้วในช่วงวันที่ที่กำหนด (ไม่ลบเงินเดือน)
+              </p>
+            </div>
+            <button
+              className="shrink-0 px-3 py-1.5 text-sm font-medium text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors"
+              onClick={() => { setShowRangeModal(true); setRangeMsg(null) }}
+            >
+              📅 ลบตามวันที่
+            </button>
+          </div>
+
           <div className="flex items-start gap-3 p-3 bg-red-50 rounded-lg border border-red-200">
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-800">ล้างข้อมูลสแกนทั้งหมด</p>
@@ -636,6 +848,64 @@ export default function SettingsPage() {
             </button>
           </div>
         </AccordionSection>
+      )}
+
+      {/* Delete by Date Range Modal */}
+      {showRangeModal && (
+        <div className="modal-backdrop">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-md p-4 sm:p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center text-2xl">📅</div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">ลบสแกนตามช่วงวันที่</h3>
+                <p className="text-sm text-orange-600">ลบเฉพาะข้อมูลสแกนในช่วงที่กำหนด</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">วันที่เริ่มต้น</label>
+                <input
+                  type="date"
+                  value={rangeFrom}
+                  onChange={(e) => setRangeFrom(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">วันที่สิ้นสุด</label>
+                <input
+                  type="date"
+                  value={rangeTo}
+                  onChange={(e) => setRangeTo(e.target.value)}
+                  min={rangeFrom}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                />
+              </div>
+            </div>
+
+            {rangeFrom && rangeTo && (
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm text-orange-700">
+                จะลบข้อมูลสแกนนิ้วระหว่าง <span className="font-semibold">{rangeFrom}</span> ถึง <span className="font-semibold">{rangeTo}</span>
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-1">
+              <button
+                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                onClick={() => { setShowRangeModal(false); setRangeFrom(''); setRangeTo('') }}
+                disabled={deletingRange}
+              >ยกเลิก</button>
+              <button
+                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
+                onClick={handleDeleteRange}
+                disabled={!rangeFrom || !rangeTo || deletingRange}
+              >
+                {deletingRange ? '⏳ กำลังลบ...' : '🗑️ ลบข้อมูล'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Reset Confirmation Modal */}

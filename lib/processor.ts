@@ -123,9 +123,11 @@ export function getWorkingDaysInMonth(
   year: number,
   month: number,
   workDays: number[],
-  holidays: string[] = []
+  holidays: string[] = [],
+  specialWorkDays: string[] = []
 ): string[] {
   const holidaySet = new Set(holidays)
+  const specialSet = new Set(specialWorkDays)
   const days: string[] = []
   const daysInMonth = new Date(year, month, 0).getDate()
   for (let d = 1; d <= daysInMonth; d++) {
@@ -134,7 +136,9 @@ export function getWorkingDaysInMonth(
     // JS: 0=Sun,1=Mon,...,6=Sat; our workDays: 0=Mon,...,5=Sat,6=Sun
     const ourDow = dow === 0 ? 6 : dow - 1
     const dateStr = dateToString(date)
-    if (workDays.includes(ourDow) && !holidaySet.has(dateStr)) {
+    const isNormalWorkDay = workDays.includes(ourDow) && !holidaySet.has(dateStr)
+    const isSpecialWorkDay = specialSet.has(dateStr)
+    if (isNormalWorkDay || isSpecialWorkDay) {
       days.push(dateStr)
     }
   }

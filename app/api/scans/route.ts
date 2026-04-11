@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   if (!ALLOWED_MIME_TYPES.has(file.type)) return NextResponse.json({ error: 'รองรับเฉพาะไฟล์ Excel (.xlsx, .xls)' }, { status: 400 })
 
   const buffer = await file.arrayBuffer()
-  const records = parseExcelFile(buffer)
+  const records = await parseExcelFile(buffer)
 
   if (records.length === 0) {
     return NextResponse.json({ error: 'ไม่พบข้อมูลในไฟล์' }, { status: 400 })

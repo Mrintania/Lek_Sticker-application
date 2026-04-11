@@ -38,17 +38,24 @@ export async function POST(req: NextRequest) {
   const file = formData.get('file') as File
   if (!file) return NextResponse.json({ error: 'ไม่พบไฟล์' }, { status: 400 })
   if (file.size > MAX_FILE_SIZE) return NextResponse.json({ error: 'ไฟล์ขนาดใหญ่เกิน 10MB' }, { status: 400 })
-  if (!ALLOWED_MIME_TYPES.has(file.type)) return NextResponse.json({ error: 'รองรับเฉพาะไฟล์ Excel (.xlsx, .xls)' }, { status: 400 })
+  console.log('[preview] file:', file.name, 'type:', file.type, 'size:', file.size)
+  if (!ALLOWED_MIME_TYPES.has(file.type)) {
+    console.log('[preview] MIME rejected:', file.type)
+    return NextResponse.json({ error: 'รองรับเฉพาะไฟล์ Excel (.xlsx, .xls)' }, { status: 400 })
+  }
 
   let records
   try {
     const buffer = await file.arrayBuffer()
-    records = parseExcelFile(buffer)
-  } catch {
+    records = await parseExcelFile(buffer)
+    console.log('[preview] parsed records:', records.length)
+  } catch (err) {
+    console.error('[preview] parse error:', err)
     return NextResponse.json({ error: 'ไม่สามารถอ่านไฟล์ได้ กรุณาตรวจสอบรูปแบบไฟล์' }, { status: 400 })
   }
 
   if (records.length === 0) {
+    console.log('[preview] records empty')
     return NextResponse.json({ error: 'ไม่พบข้อมูลในไฟล์' }, { status: 400 })
   }
 

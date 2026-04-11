@@ -84,6 +84,10 @@ export async function POST(req: NextRequest) {
     `SELECT date FROM holidays WHERE is_active = 1 AND date >= ? AND date <= ?`
   ).all(startDate, endDate) as { date: string }[]).map((h) => h.date)
 
+  const specialWorkDays = (db.prepare(
+    `SELECT date FROM special_work_days WHERE date >= ? AND date <= ?`
+  ).all(startDate, endDate) as { date: string }[]).map((h) => h.date)
+
   const rawRows = db.prepare(`SELECT * FROM raw_scans WHERE scan_datetime >= ? AND scan_datetime <= ?`
   ).all(periodStart, effectivePeriodCutoff + ' 23:59:59') as {
     employee_id: string; employee_name: string; department: string;
@@ -149,8 +153,8 @@ export async function POST(req: NextRequest) {
     employee_id: string; name: string; employment_type: string; daily_rate: number | null; monthly_salary: number | null
   }[]
 
-  // วันทำงานทั้งเดือน (ใช้คำนวณอัตรารายวันจากเงินเดือนรายเดือน)
-  const allWorkingDates = getWorkingDaysInMonth(year, month, settings.workDays, activeHolidays)
+  // วันทำงานทั้งเดือน (รวมวันทำงานพิเศษ)
+  const allWorkingDates = getWorkingDaysInMonth(year, month, settings.workDays, activeHolidays, specialWorkDays)
   const totalWorkingDaysInMonth = allWorkingDates.length || 1
 
   // วันทำงานทั้งหมดในรอบนี้

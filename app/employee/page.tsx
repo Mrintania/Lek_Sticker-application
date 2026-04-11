@@ -31,8 +31,28 @@ export default function EmployeePage() {
   }, [master])
 
   const [selectedEmpId, setSelectedEmpId] = useState<string>('')
+  const [selectedMonth, setSelectedMonth] = useState<string>('') // 'YYYY-MM' หรือ '' = ทั้งหมด
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+
+  function handleMonthSelect(ym: string) {
+    setSelectedMonth(ym)
+    if (!ym) {
+      setStartDate('')
+      setEndDate('')
+    } else {
+      const [y, m] = ym.split('-').map(Number)
+      const last = new Date(y, m, 0).getDate()
+      setStartDate(`${ym}-01`)
+      setEndDate(`${ym}-${String(last).padStart(2, '0')}`)
+    }
+  }
+
+  function handleDateChange(type: 'start' | 'end', val: string) {
+    setSelectedMonth('') // clear month shortcut เมื่อแก้วันที่เอง
+    if (type === 'start') setStartDate(val)
+    else setEndDate(val)
+  }
 
   // Auto-select first employee when data loads
   useEffect(() => {
@@ -49,8 +69,12 @@ export default function EmployeePage() {
   const months = useMemo(() => getAvailableMonths(master), [master])
 
   const monthlyTrend = useMemo(() => {
+    const today = new Date()
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
     return months.map((m) => {
-      const summary = getMonthlySummary(master, m.year, m.month, employees, settings)
+      const isCurrentMonth = m.year === today.getFullYear() && m.month === today.getMonth() + 1
+      const cutoff = isCurrentMonth ? todayStr : undefined
+      const summary = getMonthlySummary(master, m.year, m.month, employees, settings, cutoff)
       const emp = summary.find((s) => s.employeeId === selectedEmpId)
       return {
         label: formatThaiMonthYear(m.year, m.month),
@@ -111,9 +135,37 @@ export default function EmployeePage() {
               ))}
             </select>
           )}
-          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="!w-auto flex-1 sm:flex-none" />
+
+          {/* Month shortcut */}
+          <select
+            value={selectedMonth}
+            onChange={(e) => handleMonthSelect(e.target.value)}
+            className="!w-auto flex-1 sm:flex-none"
+          >
+            <option value="">ทุกเดือน</option>
+            {months.map((m) => {
+              const ym = `${m.year}-${String(m.month).padStart(2, '0')}`
+              return (
+                <option key={ym} value={ym}>
+                  {formatThaiMonthYear(m.year, m.month)}
+                </option>
+              )
+            })}
+          </select>
+
+          {/* Manual date range */}
+          <input type="date" value={startDate} onChange={(e) => handleDateChange('start', e.target.value)} className="!w-auto flex-1 sm:flex-none" />
           <span className="text-gray-400 text-sm">ถึง</span>
-          <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="!w-auto flex-1 sm:flex-none" />
+          <input type="date" value={endDate} onChange={(e) => handleDateChange('end', e.target.value)} className="!w-auto flex-1 sm:flex-none" />
+
+          {(startDate || endDate) && (
+            <button
+              onClick={() => { setSelectedMonth(''); setStartDate(''); setEndDate('') }}
+              className="text-xs text-gray-400 hover:text-red-500 transition-colors px-1"
+              title="ล้างตัวกรอง"
+            >✕</button>
+          )}
+
           {records.length > 0 && !isRegularUser && (
             <button className="btn-secondary whitespace-nowrap" onClick={() => exportEmployeeReport(records, selectedEmpId, master.find(r => r.employeeId === selectedEmpId)?.name ?? '')}>
               ⬇️ Export Excel

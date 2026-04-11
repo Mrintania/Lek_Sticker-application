@@ -80,9 +80,14 @@ export function getMonthlySummary(
   year: number,
   month: number,
   employees: EmployeeProfile[],
-  settings: WorkSettings
+  settings: WorkSettings,
+  cutoffDate?: string   // YYYY-MM-DD — ไม่นับวันหลังจากนี้ (ใช้สำหรับเดือนปัจจุบัน)
 ): MonthlySummary[] {
-  const workingDates = getWorkingDaysInMonth(year, month, settings.workDays)
+  const allWorkingDates = getWorkingDaysInMonth(year, month, settings.workDays)
+  // ถ้ามี cutoff → นับเฉพาะวันที่ผ่านมาแล้ว (ไม่รวมอนาคต)
+  const workingDates = cutoffDate
+    ? allWorkingDates.filter((d) => d <= cutoffDate)
+    : allWorkingDates
   const workingDaysInMonth = workingDates.length
   const empMap = new Map(employees.map((e) => [e.employeeId, e]))
 

@@ -2,7 +2,7 @@
 
 > ระบบบริหารจัดการพนักงาน บันทึกการเข้างาน เงินเดือน งานผลิต งานส่ง และการเงินบริษัท สำหรับร้านเล็กสติ๊กเกอร์
 
-สร้างโดย **AJ.NUI** &nbsp;|&nbsp; Version **1.3.0**
+สร้างโดย **AJ.NUI** &nbsp;|&nbsp; Version **1.4.0**
 
 ![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
@@ -51,6 +51,17 @@
 ---
 
 ## 🆕 ประวัติการอัปเดต
+
+### v1.4.0 — เมษายน 2569
+- **🔒 อัปเกรด Next.js 15.5.15** — แก้ช่องโหว่ Denial of Service ใน Server Components (GHSA-q4gf-8mx6-v5v3)
+- **📦 แทนที่ xlsx ด้วย exceljs** — ลบ library ที่มีช่องโหว่ Prototype Pollution + ReDoS ออก ใช้ exceljs แทนซึ่งมีอยู่แล้ว
+- **⏱️ แก้ timezone ของไฟล์สแกน** — ExcelJS อ่าน datetime เป็น UTC ทำให้เวลาเร็วกว่าจริง 7 ชั่วโมง แก้โดย reinterpret UTC components เป็น local time ก่อนบันทึก
+- **🗑️ ลบสแกนตามช่วงวันที่** — เพิ่มฟีเจอร์ลบข้อมูลสแกนเฉพาะช่วงวันที่ที่เลือก (ไม่ต้องลบทั้งหมด) ใน Settings
+- **🏭 ระบบวันทำงานพิเศษ** — Admin/Manager กำหนดวันอาทิตย์หรือวันหยุดให้เป็นวันทำงานได้ ผูกกับระบบเงินเดือนอัตโนมัติ หน้า Daily แสดง badge "🏭 วันทำงานพิเศษ"
+- **📅 Filter เดือนหน้ารายคน** — เพิ่ม dropdown เลือกเดือนในหน้าข้อมูลพนักงานรายคน auto-fill ช่วงวันที่ให้อัตโนมัติ
+- **📊 แก้จำนวนขาดงานในเดือนปัจจุบัน** — Dashboard / รายเดือน / รายคน ตัดการนับวันขาดงานที่วันนี้ ไม่นับวันในอนาคตเป็นขาดงาน
+- **⚙️ เมนูตั้งค่าอยู่ล่างสุด Sidebar** — แยก "ตั้งค่า" ไว้ล่างสุดพร้อม divider เพื่อให้หาง่าย
+- **🔑 แก้ Login 500 Error** — rebuild better-sqlite3 ให้ตรงกับ Node.js 22 (ABI 127) หลังจาก npm install ใน Node 16 environment
 
 ### v1.3.0 — เมษายน 2569
 - **💹 ระบบการเงินบริษัท** — Dashboard รายรับ/รายจ่าย กำไร/ขาดทุน พร้อม Bar Chart และ Pie Chart
