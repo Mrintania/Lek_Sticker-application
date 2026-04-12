@@ -1,6 +1,6 @@
 {
   "name": "lek_sticker",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "main": "index.js",
   "scripts": {
     "dev": "concurrently -n \"next,warmup\" -c \"cyan,yellow\" \"node scripts/dev.mjs\" \"node scripts/dev-warmup.mjs\"",
