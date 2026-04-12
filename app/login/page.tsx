@@ -34,7 +34,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-blue-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-blue-100 flex flex-col items-center justify-center p-4 gap-4">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden">
 
         {/* Header band */}
@@ -143,6 +143,11 @@ export default function LoginPage() {
           </button>
         </form>
       </div>
+
+      {/* Credit */}
+      <p className="text-center text-xs text-gray-400">
+        © 2569 เล็กสติ๊กเกอร์ &nbsp;·&nbsp; พัฒนาโดย <span className="font-medium text-gray-500">AJ.NUI</span> &nbsp;·&nbsp; v1.5.0
+      </p>
     </div>
   )
 }
