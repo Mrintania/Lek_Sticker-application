@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { getUserFromRequest, canManage } from '@/lib/auth'
+import { validateYearMonth, validateAmount } from '@/lib/validation'
 
 export async function GET(req: NextRequest) {
   const user = getUserFromRequest(req)
@@ -43,12 +44,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน' }, { status: 400 })
   }
 
+  const ymErr = validateYearMonth(year, month)
+  if (ymErr) return NextResponse.json({ error: ymErr }, { status: 400 })
+
   if (income_type === 'print_order' && quantity && price_per_unit) {
     amount = quantity * price_per_unit
   }
-  if (!amount || amount <= 0) {
-    return NextResponse.json({ error: 'ยอดเงินต้องมากกว่า 0' }, { status: 400 })
-  }
+  const amtErr = validateAmount(amount)
+  if (amtErr) return NextResponse.json({ error: amtErr }, { status: 400 })
 
   const db = getDb()
   const result = db.prepare(

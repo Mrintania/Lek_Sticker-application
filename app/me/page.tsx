@@ -120,6 +120,8 @@ export default function MePage() {
   const [loadingPayroll, setLoadingPayroll] = useState(true)
   const [loadingLeaves, setLoadingLeaves] = useState(true)
 
+  const currentYear  = today.getFullYear()
+  const currentMonth = today.getMonth() + 1
 
   useEffect(() => {
     if (!user || userLoading) return
@@ -176,29 +178,39 @@ export default function MePage() {
 
   // KPI computed values
   const kpi = useMemo(() => {
-    if (payroll) {
+    const todayStr = today.toISOString().slice(0, 10)
+    const isCurrentMonth = year === currentYear && month === currentMonth
+
+    // เดือนปัจจุบัน: คำนวณจาก attendance array ตัด cutoff วันนี้
+    // (payroll record อาจถูก calculate ก่อน import scan → ข้อมูลไม่ตรง)
+    if (isCurrentMonth || !payroll) {
+      const filtered = isCurrentMonth
+        ? attendance.filter(r => r.date <= todayStr)
+        : attendance
+      const present = filtered.filter(r => !['absent', 'holiday'].includes(r.status)).length
+      const absent  = filtered.filter(r => r.status === 'absent').length
+      const working = filtered.filter(r => r.status !== 'holiday').length
+      const late    = filtered.reduce((s, r) => s + (r.lateMinutes ?? 0), 0)
       return {
-        daysPresent: payroll.days_present,
-        workingDays: payroll.working_days,
-        daysAbsent: payroll.days_absent + payroll.days_sick_no_cert,
-        lateMinutes: payroll.total_late_minutes,
-        diligenceBonus: payroll.diligence_bonus,
-        hasPayroll: true,
+        daysPresent: present,
+        workingDays: working || null,
+        daysAbsent: absent,
+        lateMinutes: late,
+        diligenceBonus: payroll?.diligence_bonus ?? null,
+        hasPayroll: !!payroll,
       }
     }
-    // Fallback: compute from attendance array
-    const present = attendance.filter(r => !['absent', 'holiday'].includes(r.status)).length
-    const absent = attendance.filter(r => r.status === 'absent').length
-    const late = attendance.reduce((s, r) => s + (r.lateMinutes ?? 0), 0)
+
+    // เดือนที่ผ่านมา: ใช้ payroll record (คำนวณแล้วถูกต้อง)
     return {
-      daysPresent: present,
-      workingDays: null,
-      daysAbsent: absent,
-      lateMinutes: late,
-      diligenceBonus: null,
-      hasPayroll: false,
+      daysPresent: payroll.days_present,
+      workingDays: payroll.working_days,
+      daysAbsent: payroll.days_absent + payroll.days_sick_no_cert,
+      lateMinutes: payroll.total_late_minutes,
+      diligenceBonus: payroll.diligence_bonus,
+      hasPayroll: true,
     }
-  }, [payroll, attendance])
+  }, [payroll, attendance, year, month, currentYear, currentMonth])
 
   // Quick status badge
   const statusBadge = useMemo(() => {
@@ -232,8 +244,6 @@ export default function MePage() {
     [...leaves].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 5)
   ), [leaves])
 
-  const currentYear = today.getFullYear()
-  const currentMonth = today.getMonth() + 1
   const years = [currentYear - 1, currentYear]
 
   if (userLoading) return null

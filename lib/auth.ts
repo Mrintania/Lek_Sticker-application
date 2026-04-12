@@ -1,7 +1,10 @@
 import jwt from 'jsonwebtoken'
 import { NextRequest } from 'next/server'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'lek-sticker-secret-key-2025'
+if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required in production')
+}
+const JWT_SECRET = process.env.JWT_SECRET || 'lek-sticker-dev-secret-key-local-only'
 const COOKIE_NAME = 'att_token'
 
 export interface JWTPayload {
