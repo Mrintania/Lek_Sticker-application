@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, LabelList } from 'recharts'
 
 interface SummaryData {
   byMachine: { machine_id: number; machine_code: string; machine_name: string; total_quantity: number; record_count: number }[]
@@ -480,12 +480,14 @@ export default function ProductionDashboardPage() {
               <div className="card">
                 <h3 className="text-sm font-semibold text-gray-700 mb-4">ผลงานต่อแท่นพิมพ์</h3>
                 <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={machineChartData} margin={{ top: 0, right: 8, bottom: 0, left: 8 }}>
+                  <BarChart data={machineChartData} margin={{ top: 20, right: 8, bottom: 0, left: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                     <XAxis dataKey="name" tick={{ fontSize: 12 }} />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
                     <Tooltip formatter={(v: unknown) => [Number(v).toLocaleString() + ' ชิ้น', 'ผลผลิต']} />
-                    <Bar dataKey="ชิ้น" fill="#6366f1" radius={[4, 4, 0, 0]} maxBarSize={60} />
+                    <Bar dataKey="ชิ้น" fill="#6366f1" radius={[4, 4, 0, 0]} maxBarSize={60}>
+                      <LabelList dataKey="ชิ้น" position="top" style={{ fontSize: 11, fill: '#6b7280' }} formatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v} />
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -494,12 +496,14 @@ export default function ProductionDashboardPage() {
                 <div className="card">
                   <h3 className="text-sm font-semibold text-gray-700 mb-4">ผลงานต่อพนักงาน{viewMode !== 'day' ? ' (Top 10)' : ''}</h3>
                   <ResponsiveContainer width="100%" height={220}>
-                    <BarChart data={empChartData} margin={{ top: 0, right: 8, bottom: 0, left: 8 }}>
+                    <BarChart data={empChartData} margin={{ top: 20, right: 8, bottom: 0, left: 8 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                       <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                       <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
                       <Tooltip formatter={(v: unknown) => [Number(v).toLocaleString() + ' ชิ้น', 'ผลผลิต']} />
-                      <Bar dataKey="ชิ้น" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={60} />
+                      <Bar dataKey="ชิ้น" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={60}>
+                        <LabelList dataKey="ชิ้น" position="top" style={{ fontSize: 11, fill: '#6b7280' }} formatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v} />
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -514,12 +518,14 @@ export default function ProductionDashboardPage() {
                 {viewMode === 'week' ? 'ผลผลิตรายวันในสัปดาห์' : 'แนวโน้มรายวัน'}
               </h3>
               <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={dailyChartData} margin={{ top: 0, right: 8, bottom: 0, left: 8 }}>
+                <BarChart data={dailyChartData} margin={{ top: 20, right: 8, bottom: 0, left: 8 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                   <XAxis dataKey="name" tick={{ fontSize: 10 }} />
                   <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
                   <Tooltip formatter={(v: unknown) => [Number(v).toLocaleString() + ' ชิ้น', 'ผลผลิต']} />
-                  <Bar dataKey="ชิ้น" fill="#f59e0b" radius={[4, 4, 0, 0]} maxBarSize={viewMode === 'week' ? 48 : 36} />
+                  <Bar dataKey="ชิ้น" fill="#f59e0b" radius={[4, 4, 0, 0]} maxBarSize={viewMode === 'week' ? 48 : 36}>
+                    <LabelList dataKey="ชิ้น" position="top" style={{ fontSize: 10, fill: '#6b7280' }} formatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v} />
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>

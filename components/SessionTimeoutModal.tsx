@@ -39,12 +39,21 @@ export default function SessionTimeoutModal() {
         {/* Body */}
         <div className="px-6 py-6 text-center">
           <p className="text-gray-600 text-sm mb-3">ระบบจะออกจากระบบอัตโนมัติใน</p>
-          <div
-            className={`text-5xl font-mono font-bold mb-2 tabular-nums ${
-              urgency ? 'text-red-500' : 'text-amber-500'
-            }`}
-          >
-            {formatCountdown(secondsLeft)}
+          <div className="flex items-center justify-center gap-1 mb-2">
+            {formatCountdown(secondsLeft).split('').map((char, i) => (
+              char === ':' ? (
+                <span key={i} className={`text-5xl font-mono font-bold ${urgency ? 'text-red-400' : 'text-amber-400'}`}>:</span>
+              ) : (
+                <span
+                  key={`${i}-${char}`}
+                  className={`inline-block text-5xl font-mono font-bold tabular-nums w-[1.8ch] text-center
+                    ${urgency ? 'text-red-500' : 'text-amber-500'}
+                    animate-[countdown_0.3s_ease-out]`}
+                >
+                  {char}
+                </span>
+              )
+            ))}
           </div>
           <p className="text-gray-400 text-xs">นาที : วินาที</p>
         </div>

@@ -49,3 +49,4 @@ ngrok.yml
 
 
 attendance.db.*
+.claude/worktrees/

@@ -35,6 +35,10 @@ export async function POST(req: NextRequest) {
     if (!username || !password) {
       return NextResponse.json({ error: 'กรุณากรอก username และ password' }, { status: 400 })
     }
+    if (typeof username !== 'string' || username.length > 50 ||
+        typeof password !== 'string' || password.length > 128) {
+      return NextResponse.json({ error: 'ข้อมูลไม่ถูกต้อง' }, { status: 400 })
+    }
 
     const db = getDb()
     const user = db.prepare('SELECT * FROM users WHERE username = ? AND is_active = 1').get(username) as {
@@ -42,6 +46,7 @@ export async function POST(req: NextRequest) {
     } | undefined
 
     if (!user || !bcrypt.compareSync(password, user.password_hash)) {
+      logAudit(getDb(), username, 'auth.login.failed', 'user', username, { reason: 'invalid_credentials' }, getIp(req))
       return NextResponse.json({ error: 'Username หรือ Password ไม่ถูกต้อง' }, { status: 401 })
     }
 

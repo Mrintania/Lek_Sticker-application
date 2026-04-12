@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { getUserFromRequest, canManage } from '@/lib/auth'
+import { validateAmount } from '@/lib/validation'
 
 export async function GET(req: NextRequest) {
   const user = getUserFromRequest(req)
@@ -40,6 +41,11 @@ export async function POST(req: NextRequest) {
 
   if (!body.bank_name || !body.account_number) {
     return NextResponse.json({ error: 'กรุณาระบุชื่อธนาคารและเลขบัญชี' }, { status: 400 })
+  }
+
+  if (body.credit_limit) {
+    const amtErr = validateAmount(body.credit_limit)
+    if (amtErr) return NextResponse.json({ error: amtErr }, { status: 400 })
   }
 
   const db = getDb()
