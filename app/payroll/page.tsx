@@ -502,6 +502,7 @@ export default function PayrollPage() {
     daysAbsent: r.days_absent,
     daysNoCheckout: 0,
     daysHalfDay: 0,
+    daysLeave: 0,
     totalWorkHours: 0,
     avgWorkHours: 0,
     attendanceRate: r.working_days > 0 ? (r.days_present / r.working_days) * 100 : 0,

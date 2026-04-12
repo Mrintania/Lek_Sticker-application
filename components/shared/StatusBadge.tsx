@@ -13,6 +13,7 @@ const statusClasses: Record<AttendanceStatus, string> = {
   leave_half_afternoon: 'status-halfDay',
   leave_full_day: 'status-absent',
   holiday: 'status-noCheckout',
+  noCheckIn: 'status-noCheckout',
 }
 
 export default function StatusBadge({ status }: { status: AttendanceStatus }) {
