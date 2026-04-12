@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { formatThaiMonthYear, formatCurrency } from '@/lib/formatters'
 import { PaymentMethod, PAYMENT_METHOD_LABELS, PAYMENT_METHOD_ICONS } from '@/lib/types'
 
@@ -42,13 +43,7 @@ export default function MyPayrollPage() {
   const [selected, setSelected] = useState<PayrollRec | null>(null)
   const [expandedKey, setExpandedKey] = useState<string | null>(null)
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape' && selected) setSelected(null)
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [selected])
+  useEscapeKey(() => setSelected(null), selected !== null)
 
   useEffect(() => {
     if (!user || userLoading) return

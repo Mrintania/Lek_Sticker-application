@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 
 const CATEGORY_LABELS: Record<string, string> = {
   car_installment: 'ค่างวดรถ', rent: 'ค่าเช่า', salary_total: 'เงินเดือนรวม',
@@ -26,6 +27,10 @@ export default function RecurringPage() {
   const [form, setForm] = useState({ expense_type: 'fixed', category: '', sub_category: '', default_amount: '', note: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  useEscapeKey(() => {
+    if (showModal) setShowModal(false)
+    else if (confirmDeleteId !== null) setConfirmDeleteId(null)
+  }, showModal || confirmDeleteId !== null)
 
   const load = useCallback(async () => {
     setLoading(true)

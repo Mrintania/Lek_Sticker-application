@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import ProfileModal from '@/components/ProfileModal'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 
 const ROLE_BADGE: Record<string, { label: string; cls: string }> = {
   admin: { label: 'Admin', cls: 'bg-red-100 text-red-700' },
@@ -68,6 +69,7 @@ export default function Sidebar() {
   const canManage = user?.role === 'admin' || user?.role === 'manager'
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [showProfileModal, setShowProfileModal] = useState(false)
+  useEscapeKey(() => setShowLogoutConfirm(false), showLogoutConfirm)
 
   // Close mobile sidebar on route change
   useEffect(() => {

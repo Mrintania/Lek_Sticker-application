@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { useAttendanceStore } from '@/store/attendanceStore'
 import { WorkSettings, Holiday } from '@/lib/types'
 import { THAI_DAYS } from '@/lib/formatters'
@@ -69,6 +70,7 @@ export default function SettingsPage() {
   const [resetConfirmText, setResetConfirmText] = useState('')
   const [resetting, setResetting] = useState(false)
   const [resetMsg, setResetMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  useEscapeKey(() => setShowResetModal(false), showResetModal)
 
   const [newSpecialDate, setNewSpecialDate] = useState('')
   const [newSpecialReason, setNewSpecialReason] = useState('')
@@ -263,47 +265,6 @@ export default function SettingsPage() {
   const canManageHolidays = canViewHolidays // manager และ admin แก้ไขวันหยุดได้
   const canUploadScans = canViewHolidays // manager และ admin อัปโหลดสแกนได้
 
-  // ── Diligence bonus settings ─────────────────────────────────────────────────
-  const [diligence, setDiligence] = useState({
-    diligenceBonusEnabled: true,
-    sickWithCertExempt: true,
-    monthlyMaxAbsent: 3.5,
-    diligenceBaseAmount: 1000,
-    diligenceStepAmount: 150,
-    diligenceMaxDays: 3,
-  })
-  const [diligenceSaving, setDiligenceSaving] = useState(false)
-  const [diligenceMsg, setDiligenceMsg] = useState('')
-
-  useEffect(() => {
-    fetch('/api/payroll/settings')
-      .then(r => r.json())
-      .then(d => setDiligence({
-        diligenceBonusEnabled: Boolean(d.diligenceBonusEnabled),
-        sickWithCertExempt: Boolean(d.sickWithCertExempt),
-        monthlyMaxAbsent: d.monthlyMaxAbsent ?? 3.5,
-        diligenceBaseAmount: d.diligenceBaseAmount ?? 1000,
-        diligenceStepAmount: d.diligenceStepAmount ?? 150,
-        diligenceMaxDays: d.diligenceMaxDays ?? 3,
-      }))
-      .catch(() => {})
-  }, [])
-
-  async function saveDiligence() {
-    setDiligenceSaving(true)
-    try {
-      await fetch('/api/payroll/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(diligence),
-      })
-      setDiligenceMsg('บันทึกแล้ว')
-      setTimeout(() => setDiligenceMsg(''), 2500)
-    } finally {
-      setDiligenceSaving(false)
-    }
-  }
-
   // Esc key closes reset modal
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -443,98 +404,6 @@ export default function SettingsPage() {
           </div>
         )}
       </AccordionSection>
-
-      {/* ── Section 2: เบี้ยขยัน ── */}
-      {canViewHolidays && (
-        <AccordionSection
-          id="diligence"
-          icon="🏆"
-          title="ตั้งค่าเบี้ยขยัน"
-          subtitle="กำหนดเกณฑ์การจ่ายเบี้ยขยันพนักงาน"
-          open={openSections.has('diligence')}
-          onToggle={toggleSection}
-        >
-          <div className="space-y-4">
-            {/* Toggle: เปิด/ปิดเบี้ยขยัน */}
-            <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors">
-              <input
-                type="checkbox"
-                checked={diligence.diligenceBonusEnabled}
-                onChange={(e) => setDiligence({ ...diligence, diligenceBonusEnabled: e.target.checked })}
-                className="w-4 h-4 text-blue-600 shrink-0"
-              />
-              <div>
-                <p className="text-sm font-medium text-gray-800">เปิดใช้งานเบี้ยขยัน</p>
-                <p className="text-xs text-gray-400">คำนวณและแสดงเบี้ยขยันในตารางเงินเดือน</p>
-              </div>
-            </label>
-
-            {/* Toggle: ยกเว้นลาป่วยมีใบแพทย์ */}
-            <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors">
-              <input
-                type="checkbox"
-                checked={diligence.sickWithCertExempt}
-                onChange={(e) => setDiligence({ ...diligence, sickWithCertExempt: e.target.checked })}
-                className="w-4 h-4 text-blue-600 shrink-0"
-              />
-              <div>
-                <p className="text-sm font-medium text-gray-800">ยกเว้นการลาป่วยที่มีใบรับรองแพทย์</p>
-                <p className="text-xs text-gray-400">ไม่นับวันลาป่วยมีใบแพทย์เป็นวันขาดในการคำนวณเบี้ยขยัน</p>
-              </div>
-            </label>
-
-            {/* Numeric fields */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">เบี้ยขยันฐาน (บาท/รอบ)</label>
-                <input
-                  type="number" min={0}
-                  className="w-full"
-                  value={diligence.diligenceBaseAmount}
-                  onChange={(e) => setDiligence({ ...diligence, diligenceBaseAmount: Number(e.target.value) })}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">หักต่อ 0.5 วันที่ขาด (บาท)</label>
-                <input
-                  type="number" min={0}
-                  className="w-full"
-                  value={diligence.diligenceStepAmount}
-                  onChange={(e) => setDiligence({ ...diligence, diligenceStepAmount: Number(e.target.value) })}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">วันขาดสูงสุด (เกินนี้เบี้ย = 0)</label>
-                <input
-                  type="number" min={0} step={0.5}
-                  className="w-full"
-                  value={diligence.diligenceMaxDays}
-                  onChange={(e) => setDiligence({ ...diligence, diligenceMaxDays: Number(e.target.value) })}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">วันขาดสูงสุด/รอบ (ก่อนคิดรายวัน)</label>
-                <input
-                  type="number" min={0} step={0.5}
-                  className="w-full"
-                  value={diligence.monthlyMaxAbsent}
-                  onChange={(e) => setDiligence({ ...diligence, monthlyMaxAbsent: Number(e.target.value) })}
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-2">
-              {diligenceMsg
-                ? <span className="text-green-600 text-sm font-medium">✅ {diligenceMsg}</span>
-                : <span />
-              }
-              <button className="btn-primary" onClick={saveDiligence} disabled={diligenceSaving}>
-                {diligenceSaving ? 'กำลังบันทึก...' : '💾 บันทึก'}
-              </button>
-            </div>
-          </div>
-        </AccordionSection>
-      )}
 
       {/* ── Section 3: วันหยุด ── */}
       {canViewHolidays && (

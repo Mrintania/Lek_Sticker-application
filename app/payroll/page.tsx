@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { formatThaiMonthYear, formatCurrency, formatTime, formatHours, formatMinutes, formatThaiDateShort } from '@/lib/formatters'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { exportMonthlyReport } from '@/lib/exporter'
@@ -118,6 +119,13 @@ export default function PayrollPage() {
   const [showBulkConfirm, setShowBulkConfirm] = useState(false)
   // Payment filter
   const [payFilter, setPayFilter] = useState<'all' | 'pending' | 'paid'>('all')
+  useEscapeKey(() => {
+    if (adjustmentModal !== null) setAdjustmentModal(null)
+    else if (paymentModal !== null) setPaymentModal(null)
+    else if (showBulkConfirm) setShowBulkConfirm(false)
+    else if (dailyRateModal !== null) setDailyRateModal(null)
+    else if (showSettings) setShowSettings(false)
+  }, adjustmentModal !== null || paymentModal !== null || showBulkConfirm || dailyRateModal !== null || showSettings)
 
   // Calculate confirm dialog
   const [showCalcConfirm, setShowCalcConfirm] = useState(false)

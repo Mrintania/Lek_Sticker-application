@@ -1,5 +1,6 @@
 'use client'
 import { useState, useMemo, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useAttendanceStore } from '@/store/attendanceStore'
 import { getEmployeeRecords, getMonthlySummary, getAvailableMonths } from '@/lib/reports'
 import { formatThaiDateShort, formatTime, formatHours, formatMinutes, formatThaiMonthYear } from '@/lib/formatters'
@@ -18,6 +19,7 @@ export default function EmployeePage() {
   const { user } = useCurrentUser()
   const isRegularUser = user?.role === 'user'
   const [employees, setEmployees] = useState<EmployeeProfile[]>([])
+  const searchParams = useSearchParams()
 
   useEffect(() => {
     if (!isLoaded) loadAttendance()
@@ -30,10 +32,11 @@ export default function EmployeePage() {
     return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1]))
   }, [master])
 
-  const [selectedEmpId, setSelectedEmpId] = useState<string>('')
-  const [selectedMonth, setSelectedMonth] = useState<string>('') // 'YYYY-MM' หรือ '' = ทั้งหมด
+  const [selectedEmpId, setSelectedEmpId] = useState<string>(() => searchParams.get('empId') ?? '')
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => searchParams.get('month') ?? '')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [holidayDates, setHolidayDates] = useState<Set<string>>(new Set())
 
   function handleMonthSelect(ym: string) {
     setSelectedMonth(ym)
@@ -53,6 +56,25 @@ export default function EmployeePage() {
     if (type === 'start') setStartDate(val)
     else setEndDate(val)
   }
+
+  // Init date range from URL param month
+  useEffect(() => {
+    const m = searchParams.get('month')
+    if (m) handleMonthSelect(m)
+  }, [])
+
+  // Fetch holidays for selected month
+  useEffect(() => {
+    if (!startDate) return
+    const y = startDate.slice(0, 4)
+    fetch(`/api/holidays?year=${y}`)
+      .then(r => r.json())
+      .then((data: { date: string; is_active: number }[]) => {
+        const s = new Set(data.filter(h => h.is_active).map(h => h.date))
+        setHolidayDates(s)
+      })
+      .catch(() => {})
+  }, [startDate?.slice(0, 7)])
 
   // Auto-select first employee when data loads
   useEffect(() => {
@@ -98,6 +120,25 @@ export default function EmployeePage() {
       totalLate,
     }
   }, [records])
+
+  const absentRows = useMemo(() => {
+    if (!startDate || !endDate || !settings) return []
+    const absent: { date: string }[] = []
+    const presentDates = new Set(records.map(r => r.date))
+    const cur = new Date(startDate + 'T00:00:00')
+    const end = new Date(endDate + 'T00:00:00')
+    const today = new Date()
+    while (cur <= end && cur <= today) {
+      const dow = cur.getDay()
+      const ourDow = dow === 0 ? 6 : dow - 1
+      const dateStr = `${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}-${String(cur.getDate()).padStart(2,'0')}`
+      if (settings.workDays.includes(ourDow) && !holidayDates.has(dateStr) && !presentDates.has(dateStr)) {
+        absent.push({ date: dateStr })
+      }
+      cur.setDate(cur.getDate() + 1)
+    }
+    return absent
+  }, [records, startDate, endDate, settings, holidayDates])
 
   const { sortKey, sortDir, handleSort, sorted } = useSortable<EmpSortKey>('date', 'desc')
   const sortedRecords = useMemo(() => sorted(records, (key, r) => {
@@ -216,7 +257,7 @@ export default function EmployeePage() {
 
       <div className="card !p-0 overflow-hidden">
         <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100">
-          <h3 className="font-semibold text-gray-800 text-sm sm:text-base">ประวัติการเข้างาน ({records.length} วัน)</h3>
+          <h3 className="font-semibold text-gray-800 text-sm sm:text-base">ประวัติการเข้างาน ({records.length + absentRows.length} วัน)</h3>
         </div>
         {records.length === 0 ? (
           <p className="text-center text-gray-400 py-8 text-sm">ไม่มีข้อมูลสำหรับพนักงานคนนี้</p>
@@ -264,6 +305,16 @@ export default function EmployeePage() {
                     <td className="table-cell text-center">
                       <StatusBadge status={r.status} />
                     </td>
+                  </tr>
+                ))}
+                {absentRows.map((r) => (
+                  <tr key={`absent-${r.date}`} className="hover:bg-red-50/40 bg-red-50/20">
+                    <td className="table-cell text-red-700">{formatThaiDateShort(r.date)}</td>
+                    <td className="table-cell text-center text-gray-300">—</td>
+                    <td className="table-cell text-center text-gray-300">—</td>
+                    <td className="table-cell text-center text-gray-300">—</td>
+                    <td className="table-cell text-center text-gray-300">—</td>
+                    <td className="table-cell text-center"><StatusBadge status="absent" /></td>
                   </tr>
                 ))}
               </tbody>

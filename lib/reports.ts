@@ -50,7 +50,7 @@ export function getWeeklySummary(
     )
 
     const daysPresent = empRecords.filter((r) =>
-      ['present', 'late', 'earlyLeave', 'halfDay', 'noCheckout'].includes(r.status)
+      ['present', 'late', 'earlyLeave', 'halfDay', 'noCheckout', 'noCheckIn'].includes(r.status)
     ).length
     const daysLate = empRecords.filter((r) => r.isLate).length
     const daysAbsent = weekDates.length - daysPresent
@@ -108,11 +108,14 @@ export function getMonthlySummary(
     )
 
     const daysPresent = empRecords.filter((r) =>
-      ['present', 'late', 'earlyLeave', 'halfDay', 'noCheckout'].includes(r.status)
+      ['present', 'late', 'earlyLeave', 'halfDay', 'noCheckout', 'noCheckIn'].includes(r.status)
     ).length
     const daysLate = empRecords.filter((r) => r.isLate).length
     const daysHalfDay = empRecords.filter((r) => r.status === 'halfDay').length
     const daysNoCheckout = empRecords.filter((r) => r.status === 'noCheckout').length
+    const daysLeave = empRecords.filter((r) =>
+      ['leave_sick', 'leave_sick_cert', 'leave_full_day', 'leave_half_morning', 'leave_half_afternoon'].includes(r.status)
+    ).length
     const daysAbsent = Math.max(0, workingDaysInMonth - daysPresent)
     const totalWorkHours = empRecords.reduce((sum, r) => sum + (r.workHours ?? 0), 0)
     const totalLateMinutes = empRecords.reduce((sum, r) => sum + r.lateMinutes, 0)
@@ -144,6 +147,7 @@ export function getMonthlySummary(
       daysAbsent,
       daysNoCheckout,
       daysHalfDay,
+      daysLeave,
       totalWorkHours: Math.round(totalWorkHours * 10) / 10,
       avgWorkHours: daysPresent > 0 ? Math.round((totalWorkHours / daysPresent) * 10) / 10 : 0,
       attendanceRate: Math.round(attendanceRate * 10) / 10,

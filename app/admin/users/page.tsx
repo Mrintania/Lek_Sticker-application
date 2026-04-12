@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { useRouter } from 'next/navigation'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { SortIcon } from '@/components/shared/SortIcon'
 import { useSortable } from '@/hooks/useSortable'
 
@@ -65,6 +66,11 @@ export default function AdminUsersPage() {
   const [deleteError, setDeleteError] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [showInactive, setShowInactive] = useState(false)
+  useEscapeKey(() => {
+    if (showModal) setShowModal(false)
+    else if (resetPasswordId !== null) setResetPasswordId(null)
+    else if (deleteTarget !== null) setDeleteTarget(null)
+  }, showModal || resetPasswordId !== null || deleteTarget !== null)
 
   const loadUsers = useCallback(() => {
     fetch('/api/users?includeInactive=true').then(r => r.json()).then(setUsers).catch(() => {})

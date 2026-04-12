@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { useRouter } from 'next/navigation'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 
 interface Machine {
   id: number
@@ -91,6 +92,10 @@ export default function ProductionPage() {
   const [saveMsg, setSaveMsg] = useState<Record<number, string>>({})
   const [asgMsg, setAsgMsg] = useState<Record<number, string>>({})
   const [showMachineModal, setShowMachineModal] = useState(false)
+  useEscapeKey(() => {
+    if (showMachineModal) setShowMachineModal(false)
+    else if (deleteTarget !== null) setDeleteTarget(null)
+  }, showMachineModal || deleteTarget !== null)
   const [machineForm, setMachineForm] = useState<MachineForm>(EMPTY_MACHINE_FORM)
   const [machineFormError, setMachineFormError] = useState('')
   const [savingMachine, setSavingMachine] = useState(false)

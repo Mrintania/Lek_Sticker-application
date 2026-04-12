@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { formatCurrency, THAI_MONTHS } from '@/lib/formatters'
 import { THAI_BANKS } from '@/lib/banks'
 
@@ -35,6 +36,11 @@ export default function OdPage() {
   const [computedInterest, setComputedInterest] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  useEscapeKey(() => {
+    if (showAccountModal) setShowAccountModal(false)
+    else if (showEntryModal) setShowEntryModal(false)
+    else if (confirmDeleteId !== null) setConfirmDeleteId(null)
+  }, showAccountModal || showEntryModal || confirmDeleteId !== null)
 
   const loadAccounts = useCallback(async () => {
     setLoading(true)

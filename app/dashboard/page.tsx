@@ -10,7 +10,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import { EmployeeProfile } from '@/lib/types'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 
-type DashSortKey = 'name' | 'employmentType' | 'daysPresent' | 'daysLate' | 'daysAbsent' | 'attendanceRate'
+type DashSortKey = 'name' | 'employmentType' | 'daysPresent' | 'daysLate' | 'daysAbsent' | 'daysLeave' | 'attendanceRate'
 
 export default function DashboardPage() {
   const { master, settings, loadAttendance, loadSettings, isLoaded } = useAttendanceStore()
@@ -80,6 +80,7 @@ export default function DashboardPage() {
       case 'daysPresent': return e.daysPresent
       case 'daysLate': return e.daysLate
       case 'daysAbsent': return e.daysAbsent
+      case 'daysLeave': return e.daysLeave
       case 'attendanceRate': return e.attendanceRate
     }
   }), [monthlySummary, sortKey, sortDir])
@@ -211,7 +212,12 @@ export default function DashboardPage() {
           {/* Mobile cards */}
           <div className="sm:hidden divide-y divide-gray-100">
             {sortedSummary.map((emp) => (
-              <div key={emp.employeeId} className="p-4 flex items-center justify-between gap-3">
+              <div key={emp.employeeId} className="p-4 flex items-center justify-between gap-3 cursor-pointer hover:bg-blue-50/50 transition-colors"
+                onClick={() => {
+                  const ym = selectedYear && selectedMonth ? `${selectedYear}-${String(selectedMonth).padStart(2,'0')}` : ''
+                  router.push(`/employee?empId=${emp.employeeId}&month=${ym}`)
+                }}
+              >
                 <div className="min-w-0">
                   <p className="font-medium text-gray-800 text-sm truncate">{emp.name}</p>
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -222,6 +228,7 @@ export default function DashboardPage() {
                       : null}
                     <span className="text-xs text-gray-500">มา {emp.daysPresent} วัน</span>
                     {emp.daysLate > 0 && <span className="text-xs text-yellow-600">สาย {emp.daysLate}</span>}
+                    {emp.daysLeave > 0 && <span className="text-xs text-orange-600">ลา {emp.daysLeave}</span>}
                     {emp.daysAbsent > 0 && <span className="text-xs text-red-600">ขาด {emp.daysAbsent}</span>}
                   </div>
                 </div>
@@ -241,6 +248,7 @@ export default function DashboardPage() {
                   { key: 'employmentType', label: 'ประเภท', cls: 'text-center' },
                   { key: 'daysPresent', label: 'มาทำงาน', cls: 'text-center' },
                   { key: 'daysLate', label: 'สาย', cls: 'text-center' },
+                  { key: 'daysLeave', label: 'ลา', cls: 'text-center' },
                   { key: 'daysAbsent', label: 'ขาดงาน', cls: 'text-center' },
                   { key: 'attendanceRate', label: 'อัตรา%', cls: 'text-center' },
                 ] as { key: DashSortKey; label: string; cls: string }[]).map((col) => (
@@ -253,7 +261,13 @@ export default function DashboardPage() {
               </tr></thead>
               <tbody>
                 {sortedSummary.map((emp) => (
-                  <tr key={emp.employeeId} className="hover:bg-gray-50">
+                  <tr key={emp.employeeId}
+                    className="hover:bg-blue-50 cursor-pointer"
+                    onClick={() => {
+                      const ym = selectedYear && selectedMonth ? `${selectedYear}-${String(selectedMonth).padStart(2,'0')}` : ''
+                      router.push(`/employee?empId=${emp.employeeId}&month=${ym}`)
+                    }}
+                  >
                     <td className="table-cell font-medium">{emp.name}</td>
                     <td className="table-cell text-center">
                       {emp.employmentType === 'daily' ? <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">รายวัน</span>
@@ -262,6 +276,7 @@ export default function DashboardPage() {
                     </td>
                     <td className="table-cell text-center">{emp.daysPresent}</td>
                     <td className="table-cell text-center"><span className={emp.daysLate > 0 ? 'text-yellow-600 font-medium' : 'text-gray-400'}>{emp.daysLate}</span></td>
+                    <td className="table-cell text-center"><span className={emp.daysLeave > 0 ? 'text-orange-600 font-medium' : 'text-gray-400'}>{emp.daysLeave > 0 ? emp.daysLeave : '—'}</span></td>
                     <td className="table-cell text-center"><span className={emp.daysAbsent > 0 ? 'text-red-600 font-medium' : 'text-gray-400'}>{emp.daysAbsent}</span></td>
                     <td className="table-cell text-center"><span className={`font-medium ${emp.attendanceRate >= 90 ? 'text-green-600' : emp.attendanceRate >= 75 ? 'text-yellow-600' : 'text-red-600'}`}>{emp.attendanceRate.toFixed(1)}%</span></td>
                   </tr>

@@ -1,6 +1,7 @@
 'use client'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { useIdleTimeout } from '@/hooks/useIdleTimeout'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 
 function formatCountdown(seconds: number): string {
   const m = Math.floor(seconds / 60)
@@ -11,6 +12,7 @@ function formatCountdown(seconds: number): string {
 export default function SessionTimeoutModal() {
   const { user, logout } = useCurrentUser()
   const { isWarning, secondsLeft, resetIdle } = useIdleTimeout(logout)
+  useEscapeKey(resetIdle, isWarning)
 
   // ไม่แสดงถ้าไม่ได้ login หรือยังไม่ idle
   if (!user || !isWarning || secondsLeft === null) return null

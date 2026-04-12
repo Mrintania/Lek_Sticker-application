@@ -2,7 +2,7 @@
 
 > ระบบบริหารจัดการพนักงาน บันทึกการเข้างาน เงินเดือน งานผลิต งานส่ง และการเงินบริษัท สำหรับร้านเล็กสติ๊กเกอร์
 
-สร้างโดย **AJ.NUI** &nbsp;|&nbsp; Version **1.4.1**
+สร้างโดย **AJ.NUI** &nbsp;|&nbsp; Version **1.5.0**
 
 ![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
@@ -23,12 +23,12 @@
 ### 📊 รายงาน
 - **รายวัน** — สรุปการเข้างาน มาสาย ขาดงาน พร้อม date navigator และ calendar picker
 - **รายสัปดาห์** — ภาพรวมทีมพร้อม stats cards
-- **รายเดือน** — สรุปชั่วโมงการทำงาน OT
-- **รายคน** — ประวัติการเข้างานแต่ละพนักงาน
+- **รายเดือน** — สรุปชั่วโมงการทำงาน OT พร้อม drill-down รายคน
+- **รายคน** — ประวัติการเข้างานแต่ละพนักงาน รวมถึงวันขาดงาน
 
 ### 💰 เงินเดือน
 - คำนวณเงินเดือนอัตโนมัติจากชั่วโมงทำงาน
-- รองรับ OT / ค่าเดินทาง / ค่าอาหาร / ค่าคอมมิชชั่น
+- รองรับ OT / ค่าเดินทาง / ค่าอาหาร / ค่าคอมมิชชั่น / เบี้ยขยัน
 - ส่งออกสลิปเงินเดือน
 
 ### 🏭 บันทึกงานผลิต & งานส่ง
@@ -43,6 +43,10 @@
 - **บัญชี OD** — ติดตามยอด OD แยกรายธนาคาร พร้อมคำนวณดอกเบี้ยอัตโนมัติ
 - **Template รายจ่ายประจำ** — กำหนดรายจ่ายประจำล่วงหน้าและนำเข้าทีเดียว
 
+### 👤 User Profile Self-Service *(ใหม่ v1.5.0)*
+- แก้ไขข้อมูลส่วนตัว (เบอร์โทร, ธนาคาร, เลขบัญชี) ได้เองผ่าน popup modal จาก Sidebar
+- เปลี่ยนรหัสผ่านด้วยตนเองพร้อม eye icon toggle แสดง/ซ่อนรหัสผ่าน
+
 ### ⚙️ ตั้งค่าระบบ
 - จัดการวันหยุดสาธารณะ (Admin + Manager)
 - อัปโหลดไฟล์สแกนนิ้วมือ (Admin + Manager)
@@ -51,6 +55,22 @@
 ---
 
 ## 🆕 ประวัติการอัปเดต
+
+### v1.5.0 — เมษายน 2569
+
+#### 🆕 ฟีเจอร์ใหม่
+- **👤 User Profile Self-Service** — พนักงานแก้ไขข้อมูลส่วนตัว (เบอร์โทร / ข้อมูลธนาคาร) และเปลี่ยนรหัสผ่านได้เองผ่าน popup modal จาก Sidebar user card โดยไม่ต้องผ่าน Admin
+- **🔍 Drill-down รายเดือน → รายคน** — กดชื่อพนักงานในตาราง "สรุปรายบุคคล" (หน้ารายงานรายเดือน และหน้าภาพรวมการเข้างาน) เพื่อดูรายละเอียดการเข้างานของพนักงานคนนั้นได้ทันที
+- **📋 วันขาดงานในประวัติรายคน** — หน้า "ข้อมูลพนักงานรายคน" แสดงวันที่ขาดงานในตาราง "ประวัติการเข้างาน" ครบทุกวัน ไม่ใช่แค่วันที่มีการสแกน
+- **🟡 สถานะ "ไม่ได้แสกนเข้างาน"** — ระบบตรวจจับอัตโนมัติเมื่อพนักงานสแกนเฉพาะช่วงเลิกงาน (ครึ่งหลังของวันทำงาน) โดยไม่มีการสแกนเข้า จะได้รับสถานะใหม่ "ไม่ได้แสกนเข้างาน" แทนการนับเป็น "ขาดงาน"
+- **📊 คอลัมน์ "ลา" ในภาพรวมการเข้างาน** — ตาราง "สรุปรายบุคคล" แสดงจำนวนวันลาแยกจากขาดงาน พร้อมกดดูรายละเอียดรายคนได้เลย
+
+#### 🔧 ปรับปรุง UX
+- **⌨️ กด ESC ปิด Modal ได้ทุกอัน** — ทุก Modal ในระบบปิดได้ด้วยปุ่ม ESC keyboard shortcut
+- **🗑️ ลบส่วน "เบี้ยขยัน" ออกจากหน้าตั้งค่า** — ย้ายไปตั้งค่าในหน้า "เงินเดือน" แทน ลด clutter ในหน้า Settings
+- **💻 Password input UX บน Desktop** — ช่องรหัสผ่านและปุ่ม eye toggle อยู่ใน border เดียวกัน ดูเรียบร้อยกว่าเดิม
+
+---
 
 ### v1.4.1 — เมษายน 2569
 - **🔒 Security hardening** — JWT guard ใน production, validate input length login, HSTS + Permissions-Policy headers, finance API validation
@@ -173,6 +193,7 @@ sudo bash scripts/fix-macos-filelimit.sh
 | จัดการผู้ใช้งาน | ✅ | ❌ | ❌ |
 | ดู Audit Log | ✅ | ❌ | ❌ |
 | หน้าของฉัน / ใบลา | ✅ | ✅ | ✅ |
+| **แก้ไขโปรไฟล์ตนเอง** | ✅ | ✅ | ✅ |
 
 ---
 
@@ -190,6 +211,7 @@ lek_sticker/
 │   │   ├── payroll/
 │   │   ├── leaves/
 │   │   ├── holidays/
+│   │   ├── me/                   # profile / password (self-service)
 │   │   └── finance/              # summary / income / expenses / od / recurring
 │   ├── dashboard/
 │   ├── daily/ weekly/ monthly/ employee/
@@ -201,13 +223,17 @@ lek_sticker/
 │   └── admin/
 ├── components/
 │   ├── layout/Sidebar.tsx
+│   ├── ProfileModal.tsx          # User profile self-service popup
 │   └── SessionTimeoutModal.tsx
 ├── hooks/
 │   ├── useCurrentUser.ts
+│   ├── useEscapeKey.ts           # ESC key handler for modals
 │   └── useIdleTimeout.ts
 ├── lib/
 │   ├── auth.ts
 │   ├── db.ts
+│   ├── processor.ts              # Attendance logic (incl. noCheckIn detection)
+│   ├── reports.ts
 │   └── formatters.ts
 ├── scripts/
 │   └── fix-macos-filelimit.sh

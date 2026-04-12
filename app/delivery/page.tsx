@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { useRouter } from 'next/navigation'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 
 interface DeliveryItemForm {
   model_name: string
@@ -68,6 +69,7 @@ export default function DeliveryPage() {
   const [saveMsgType, setSaveMsgType] = useState<'success' | 'error'>('success')
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null)
   const [deleting, setDeleting] = useState(false)
+  useEscapeKey(() => setDeleteTarget(null), deleteTarget !== null)
   const [showCalendar, setShowCalendar] = useState(false)
   const [calendarYM, setCalendarYM] = useState(() => todayStr().slice(0, 7))
   const [recordedDates, setRecordedDates] = useState<Set<string>>(new Set())

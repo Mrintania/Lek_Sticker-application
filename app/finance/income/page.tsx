@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { formatCurrency, THAI_MONTHS } from '@/lib/formatters'
 
 const INCOME_TYPE_LABELS: Record<string, string> = {
@@ -26,6 +27,10 @@ export default function IncomePage() {
   const [showModal, setShowModal] = useState(false)
   const [editRecord, setEditRecord] = useState<IncomeRecord | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
+  useEscapeKey(() => {
+    if (showModal) setShowModal(false)
+    else if (confirmDeleteId !== null) setConfirmDeleteId(null)
+  }, showModal || confirmDeleteId !== null)
   const [form, setForm] = useState({
     income_type: 'print_order', quantity: '', price_per_unit: '', amount: '',
     category: '', note: '', entry_date: ''

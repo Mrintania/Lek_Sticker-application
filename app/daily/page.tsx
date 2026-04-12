@@ -1,5 +1,6 @@
 'use client'
 import { useState, useMemo, useEffect, useRef } from 'react'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { useAttendanceStore } from '@/store/attendanceStore'
 import { getDailyRecords, getAvailableDates } from '@/lib/reports'
 import { formatTime, formatHours, formatMinutes } from '@/lib/formatters'
@@ -129,6 +130,7 @@ export default function DailyPage() {
   }
 
   const [overrideTarget, setOverrideTarget] = useState<{ employeeId: string; name: string; status: string } | null>(null)
+  useEscapeKey(() => setOverrideTarget(null), overrideTarget !== null)
 
   const isRegularUser = user?.role === 'user'
   const hasManage = user && canManage(user.role)
