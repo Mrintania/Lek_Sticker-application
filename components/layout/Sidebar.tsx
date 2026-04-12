@@ -190,10 +190,10 @@ export default function Sidebar() {
         {user && !collapsed && (
           <div className="px-4 py-3 mx-3 mt-3 bg-gray-50 rounded-lg border border-gray-100 flex-shrink-0">
             <div className="flex items-center gap-2">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-gray-800 truncate">{user.fullName || user.username}</p>
-                <p className="text-xs text-gray-400 truncate">@{user.username}</p>
-              </div>
+              <Link href="/me" className="min-w-0 flex-1 group cursor-pointer" title="แก้ไขโปรไฟล์">
+                <p className="text-sm font-medium text-gray-800 truncate group-hover:text-blue-600 transition-colors">{user.fullName || user.username}</p>
+                <p className="text-xs text-gray-400 truncate group-hover:text-blue-400 transition-colors">@{user.username}</p>
+              </Link>
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${ROLE_BADGE[role]?.cls ?? 'bg-gray-100 text-gray-600'}`}>
                 {ROLE_BADGE[role]?.label ?? role}
               </span>
