@@ -106,7 +106,15 @@ export default function ProductionDashboardPage() {
   const [recordedDates,  setRecordedDates]  = useState<Set<string>>(new Set())
   const [holidayDates,   setHolidayDates]   = useState<Map<string, string>>(new Map())
   const calendarRef = useRef<HTMLDivElement>(null)
-  useEscapeKey(() => setShowCalendar(false), showCalendar)
+
+  // Expanded chart/table modal
+  type ExpandedPanel = 'machine-chart' | 'emp-chart' | 'daily-chart' | 'machine-table' | 'emp-table' | 'pair-table' | null
+  const [expandedPanel, setExpandedPanel] = useState<ExpandedPanel>(null)
+
+  useEscapeKey(() => {
+    if (expandedPanel) { setExpandedPanel(null); return }
+    setShowCalendar(false)
+  }, showCalendar || expandedPanel !== null)
 
   useEffect(() => {
     if (!userLoading && !canManage && user !== undefined) router.replace('/dashboard')
@@ -160,6 +168,22 @@ export default function ProductionDashboardPage() {
   }, [showCalendar])
 
   if (userLoading || !canManage) return null
+
+  // ── Reusable expand button ────────────────────────────────────────────────
+  function ExpandBtn({ panel }: { panel: Exclude<ExpandedPanel, null> }) {
+    return (
+      <button
+        onClick={() => setExpandedPanel(panel)}
+        title="ขยายเต็มหน้าจอ"
+        className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
+        </svg>
+      </button>
+    )
+  }
 
   // ── Navigation helpers ────────────────────────────────────────────────────
   function prevMonth() {
@@ -480,7 +504,10 @@ export default function ProductionDashboardPage() {
           {machineChartData.length > 0 && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div className="card">
-                <h3 className="text-sm font-semibold text-gray-700 mb-4">ผลงานต่อแท่นพิมพ์</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-gray-700">ผลงานต่อแท่นพิมพ์</h3>
+                  <ExpandBtn panel="machine-chart" />
+                </div>
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={machineChartData} margin={{ top: 20, right: 8, bottom: 0, left: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
@@ -496,7 +523,10 @@ export default function ProductionDashboardPage() {
 
               {empChartData.length > 0 && (
                 <div className="card">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-4">ผลงานต่อพนักงาน{viewMode !== 'day' ? ' (Top 10)' : ''}</h3>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-semibold text-gray-700">ผลงานต่อพนักงาน{viewMode !== 'day' ? ' (Top 10)' : ''}</h3>
+                    <ExpandBtn panel="emp-chart" />
+                  </div>
                   <ResponsiveContainer width="100%" height={220}>
                     <BarChart data={empChartData} margin={{ top: 20, right: 8, bottom: 0, left: 8 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
@@ -516,9 +546,12 @@ export default function ProductionDashboardPage() {
           {/* Daily / Weekly trend chart */}
           {dailyChartData.length > 1 && (
             <div className="card">
-              <h3 className="text-sm font-semibold text-gray-700 mb-4">
-                {viewMode === 'week' ? 'ผลผลิตรายวันในสัปดาห์' : 'แนวโน้มรายวัน'}
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-gray-700">
+                  {viewMode === 'week' ? 'ผลผลิตรายวันในสัปดาห์' : 'แนวโน้มรายวัน'}
+                </h3>
+                <ExpandBtn panel="daily-chart" />
+              </div>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={dailyChartData} margin={{ top: 20, right: 8, bottom: 0, left: 8 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
@@ -536,8 +569,9 @@ export default function ProductionDashboardPage() {
           {/* Machine table */}
           {sortedMachines.length > 0 && (
             <div className="card !p-0 overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-100">
+              <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-gray-700">รายละเอียดต่อแท่นพิมพ์</h3>
+                <ExpandBtn panel="machine-table" />
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -578,8 +612,9 @@ export default function ProductionDashboardPage() {
           {/* Employee table */}
           {sortedEmployees.length > 0 && (
             <div className="card !p-0 overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-100">
+              <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-gray-700">ผลงานต่อพนักงาน</h3>
+                <ExpandBtn panel="emp-table" />
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -617,8 +652,9 @@ export default function ProductionDashboardPage() {
           {/* Pair summary */}
           {summary.byPair.length > 0 && (
             <div className="card !p-0 overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-100">
+              <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-gray-700">ผลงานต่อคู่พนักงาน</h3>
+                <ExpandBtn panel="pair-table" />
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -663,6 +699,176 @@ export default function ProductionDashboardPage() {
             </div>
           )}
         </>
+      )}
+
+      {/* ── Expanded Chart / Table Modal ── */}
+      {expandedPanel && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6"
+          onClick={() => setExpandedPanel(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm">
+                  {['machine-chart', 'emp-chart', 'daily-chart'].includes(expandedPanel) ? '📊' : '📋'}
+                </div>
+                <div>
+                  <h2 className="font-semibold text-gray-800 text-sm sm:text-base">
+                    {expandedPanel === 'machine-chart' && 'ผลงานต่อแท่นพิมพ์'}
+                    {expandedPanel === 'emp-chart'     && `ผลงานต่อพนักงาน${viewMode !== 'day' ? ' (Top 10)' : ''}`}
+                    {expandedPanel === 'daily-chart'   && (viewMode === 'week' ? 'ผลผลิตรายวันในสัปดาห์' : 'แนวโน้มรายวัน')}
+                    {expandedPanel === 'machine-table' && 'รายละเอียดต่อแท่นพิมพ์'}
+                    {expandedPanel === 'emp-table'     && 'ผลงานต่อพนักงาน'}
+                    {expandedPanel === 'pair-table'    && 'ผลงานต่อคู่พนักงาน'}
+                  </h2>
+                  <p className="text-xs text-gray-400 mt-0.5">{periodLabel}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setExpandedPanel(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal body */}
+            <div className="flex-1 overflow-auto p-6">
+              {/* Charts */}
+              {expandedPanel === 'machine-chart' && (
+                <ResponsiveContainer width="100%" height={420}>
+                  <BarChart data={machineChartData} margin={{ top: 24, right: 16, bottom: 8, left: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                    <XAxis dataKey="name" tick={{ fontSize: 13 }} />
+                    <YAxis tick={{ fontSize: 12 }} tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
+                    <Tooltip formatter={(v: unknown) => [Number(v).toLocaleString() + ' ชิ้น', 'ผลผลิต']} />
+                    <Bar dataKey="ชิ้น" fill="#6366f1" radius={[6, 6, 0, 0]} maxBarSize={80}>
+                      <LabelList dataKey="ชิ้น" position="top" style={{ fontSize: 13, fill: '#374151', fontWeight: 600 }} formatter={(v: unknown) => Number(v).toLocaleString()} />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+              {expandedPanel === 'emp-chart' && (
+                <ResponsiveContainer width="100%" height={420}>
+                  <BarChart data={empChartData} margin={{ top: 24, right: 16, bottom: 8, left: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                    <XAxis dataKey="name" tick={{ fontSize: 13 }} />
+                    <YAxis tick={{ fontSize: 12 }} tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
+                    <Tooltip formatter={(v: unknown) => [Number(v).toLocaleString() + ' ชิ้น', 'ผลผลิต']} />
+                    <Bar dataKey="ชิ้น" fill="#10b981" radius={[6, 6, 0, 0]} maxBarSize={80}>
+                      <LabelList dataKey="ชิ้น" position="top" style={{ fontSize: 13, fill: '#374151', fontWeight: 600 }} formatter={(v: unknown) => Number(v).toLocaleString()} />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+              {expandedPanel === 'daily-chart' && (
+                <ResponsiveContainer width="100%" height={420}>
+                  <BarChart data={dailyChartData} margin={{ top: 24, right: 16, bottom: 8, left: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 12 }} tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
+                    <Tooltip formatter={(v: unknown) => [Number(v).toLocaleString() + ' ชิ้น', 'ผลผลิต']} />
+                    <Bar dataKey="ชิ้น" fill="#f59e0b" radius={[6, 6, 0, 0]} maxBarSize={60}>
+                      <LabelList dataKey="ชิ้น" position="top" style={{ fontSize: 12, fill: '#374151', fontWeight: 600 }} formatter={(v: unknown) => Number(v).toLocaleString()} />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+
+              {/* Tables */}
+              {expandedPanel === 'machine-table' && (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="table-header text-left">แท่น</th>
+                      <th className="table-header text-right">รวม (ชิ้น)</th>
+                      <th className="table-header text-center">วันบันทึก</th>
+                      <th className="table-header text-right">เฉลี่ย/วัน</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedMachines.map(m => (
+                      <tr key={m.machine_id} className="hover:bg-gray-50 border-t border-gray-100">
+                        <td className="table-cell">
+                          <span className="font-semibold text-purple-700">{m.machine_code}</span>
+                          <span className="text-gray-400 ml-2 text-xs">{m.machine_name}</span>
+                        </td>
+                        <td className="table-cell text-right font-semibold text-lg">{m.total_quantity.toLocaleString()}</td>
+                        <td className="table-cell text-center text-gray-500">{m.record_count}</td>
+                        <td className="table-cell text-right text-gray-600">
+                          {m.record_count > 0 ? Math.round(m.total_quantity / m.record_count).toLocaleString() : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+              {expandedPanel === 'emp-table' && (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="table-header text-left">พนักงาน</th>
+                      <th className="table-header text-right">รวม (ชิ้น)</th>
+                      <th className="table-header text-center">วันทำงาน</th>
+                      <th className="table-header text-right">เฉลี่ย/วัน</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedEmployees.map(e => (
+                      <tr key={e.employee_id} className="hover:bg-gray-50 border-t border-gray-100">
+                        <td className="table-cell font-medium">{e.employee_name}</td>
+                        <td className="table-cell text-right font-semibold text-teal-700 text-lg">{e.total_quantity.toLocaleString()}</td>
+                        <td className="table-cell text-center text-gray-500">{e.days_worked}</td>
+                        <td className="table-cell text-right text-gray-600">
+                          {e.days_worked > 0 ? Math.round(e.total_quantity / e.days_worked).toLocaleString() : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+              {expandedPanel === 'pair-table' && (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="table-header text-left">คู่พนักงาน</th>
+                      <th className="table-header text-left">แท่น</th>
+                      <th className="table-header text-right">รวม (ชิ้น)</th>
+                      <th className="table-header text-center">วันทำงานร่วม</th>
+                      <th className="table-header text-right">เฉลี่ย/วัน</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {summary?.byPair.map((p, i) => (
+                      <tr key={i} className="hover:bg-gray-50 border-t border-gray-100">
+                        <td className="table-cell">
+                          <span className="font-medium">{p.emp1_name}</span>
+                          <span className="text-gray-400 mx-1.5">+</span>
+                          <span className="font-medium">{p.emp2_name}</span>
+                        </td>
+                        <td className="table-cell">
+                          <span className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full font-medium">{p.machine_code}</span>
+                        </td>
+                        <td className="table-cell text-right font-semibold text-teal-700 text-lg">{p.total_quantity.toLocaleString()}</td>
+                        <td className="table-cell text-center text-gray-500">{p.days_together}</td>
+                        <td className="table-cell text-right text-gray-600">
+                          {p.days_together > 0 ? Math.round(p.total_quantity / p.days_together).toLocaleString() : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── Calendar Picker Modal (day view) ── */}

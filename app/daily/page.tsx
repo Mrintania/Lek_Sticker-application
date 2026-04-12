@@ -323,7 +323,9 @@ export default function DailyPage() {
                           ออก: {r.checkOut ? <span className={r.isEarlyLeave ? 'text-orange-600 font-semibold' : ''}>{formatTime(r.checkOut)}</span> : '-'}
                         </span>
                         {r.workHours !== null && <span className="text-xs text-gray-500">{formatHours(r.workHours)}</span>}
-                        {r.lateMinutes > 0 && <span className="text-xs text-yellow-600">สาย {formatMinutes(r.lateMinutes)}</span>}
+                        {r.status === 'noCheckIn'
+                          ? <span className="text-xs text-orange-500">ตรวจสอบ</span>
+                          : r.lateMinutes > 0 && <span className="text-xs text-yellow-600">สาย {formatMinutes(r.lateMinutes)}</span>}
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
@@ -403,7 +405,11 @@ export default function DailyPage() {
                       </td>
                       <td className="table-cell text-center">{formatHours(r.workHours)}</td>
                       <td className="table-cell text-center">
-                        {r.lateMinutes > 0 ? <span className="text-yellow-600 font-medium">{formatMinutes(r.lateMinutes)}</span> : <span className="text-green-500 text-xs">ตรงเวลา</span>}
+                        {r.status === 'noCheckIn'
+                          ? <span className="text-orange-500 font-medium text-xs">ตรวจสอบ</span>
+                          : r.lateMinutes > 0
+                            ? <span className="text-yellow-600 font-medium">{formatMinutes(r.lateMinutes)}</span>
+                            : <span className="text-green-500 text-xs">ตรงเวลา</span>}
                       </td>
                       <td className="table-cell text-center"><StatusBadge status={r.status as AttendanceStatus} /></td>
                       {hasManage && (
