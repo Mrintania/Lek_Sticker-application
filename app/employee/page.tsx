@@ -1,5 +1,5 @@
 'use client'
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAttendanceStore } from '@/store/attendanceStore'
 import { getEmployeeRecords, getMonthlySummary, getAvailableMonths } from '@/lib/reports'
@@ -14,7 +14,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser'
 
 type EmpSortKey = 'date' | 'checkIn' | 'checkOut' | 'workHours' | 'lateMinutes' | 'status'
 
-export default function EmployeePage() {
+function EmployeePageContent() {
   const { master, settings, loadAttendance, isLoaded } = useAttendanceStore()
   const { user } = useCurrentUser()
   const isRegularUser = user?.role === 'user'
@@ -323,5 +323,13 @@ export default function EmployeePage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function EmployeePage() {
+  return (
+    <Suspense fallback={<div className="page-container text-center text-gray-400">⏳ กำลังโหลด...</div>}>
+      <EmployeePageContent />
+    </Suspense>
   )
 }
