@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
+import ProfileModal from '@/components/ProfileModal'
 
 const ROLE_BADGE: Record<string, { label: string; cls: string }> = {
   admin: { label: 'Admin', cls: 'bg-red-100 text-red-700' },
@@ -66,6 +67,7 @@ export default function Sidebar() {
 
   const canManage = user?.role === 'admin' || user?.role === 'manager'
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const [showProfileModal, setShowProfileModal] = useState(false)
 
   // Close mobile sidebar on route change
   useEffect(() => {
@@ -190,10 +192,10 @@ export default function Sidebar() {
         {user && !collapsed && (
           <div className="px-4 py-3 mx-3 mt-3 bg-gray-50 rounded-lg border border-gray-100 flex-shrink-0">
             <div className="flex items-center gap-2">
-              <Link href="/me" className="min-w-0 flex-1 group cursor-pointer" title="แก้ไขโปรไฟล์">
+              <button onClick={() => setShowProfileModal(true)} className="min-w-0 flex-1 text-left group cursor-pointer" title="แก้ไขโปรไฟล์">
                 <p className="text-sm font-medium text-gray-800 truncate group-hover:text-blue-600 transition-colors">{user.fullName || user.username}</p>
                 <p className="text-xs text-gray-400 truncate group-hover:text-blue-400 transition-colors">@{user.username}</p>
-              </Link>
+              </button>
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${ROLE_BADGE[role]?.cls ?? 'bg-gray-100 text-gray-600'}`}>
                 {ROLE_BADGE[role]?.label ?? role}
               </span>
@@ -354,6 +356,8 @@ export default function Sidebar() {
         </div>
 
       </aside>
+
+      <ProfileModal open={showProfileModal} onClose={() => setShowProfileModal(false)} />
 
       {/* Logout Confirm Modal */}
       {showLogoutConfirm && (
