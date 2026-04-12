@@ -123,6 +123,75 @@ export default function MePage() {
   const currentYear  = today.getFullYear()
   const currentMonth = today.getMonth() + 1
 
+  // ── Profile state ──
+  interface ProfileData { phone: string; bank_name: string; bank_account_number: string; bank_account_name: string }
+  const [profileData, setProfileData] = useState<ProfileData | null>(null)
+  const [showProfileEdit, setShowProfileEdit] = useState(false)
+  const [profileForm, setProfileForm] = useState<ProfileData>({ phone: '', bank_name: '', bank_account_number: '', bank_account_name: '' })
+  const [savingProfile, setSavingProfile] = useState(false)
+  const [profileMsg, setProfileMsg] = useState('')
+
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
+  const [savingPw, setSavingPw] = useState(false)
+  const [pwMsg, setPwMsg] = useState('')
+
+  // fetch profile data ครั้งเดียว เมื่อ user โหลดเสร็จ
+  useEffect(() => {
+    if (!user || userLoading || !user.employeeId) return
+    fetch('/api/me/profile')
+      .then(r => r.ok ? r.json() : null)
+      .then((data: ProfileData | null) => {
+        if (data) {
+          setProfileData(data)
+          setProfileForm(data)
+        }
+      })
+  }, [user, userLoading])
+
+  const handleSaveProfile = async () => {
+    setSavingProfile(true)
+    setProfileMsg('')
+    try {
+      const res = await fetch('/api/me/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileForm),
+      })
+      if (res.ok) {
+        setProfileData({ ...profileForm })
+        setProfileMsg('✓ บันทึกสำเร็จ')
+        setTimeout(() => { setShowProfileEdit(false); setProfileMsg('') }, 1000)
+      } else {
+        const d = await res.json()
+        setProfileMsg(d.error || 'เกิดข้อผิดพลาด')
+      }
+    } catch { setProfileMsg('เกิดข้อผิดพลาด') }
+    finally { setSavingProfile(false) }
+  }
+
+  const handleChangePassword = async () => {
+    if (pwForm.newPassword !== pwForm.confirmPassword) { setPwMsg('รหัสผ่านใหม่ไม่ตรงกัน'); return }
+    if (pwForm.newPassword.length < 8) { setPwMsg('รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร'); return }
+    setSavingPw(true)
+    setPwMsg('')
+    try {
+      const res = await fetch('/api/me/password', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword }),
+      })
+      if (res.ok) {
+        setPwMsg('✓ เปลี่ยนรหัสผ่านสำเร็จ')
+        setTimeout(() => { setShowPasswordModal(false); setPwForm({ currentPassword: '', newPassword: '', confirmPassword: '' }); setPwMsg('') }, 1200)
+      } else {
+        const d = await res.json()
+        setPwMsg(d.error || 'เกิดข้อผิดพลาด')
+      }
+    } catch { setPwMsg('เกิดข้อผิดพลาด') }
+    finally { setSavingPw(false) }
+  }
+
   useEffect(() => {
     if (!user || userLoading) return
     const start = `${year}-${String(month).padStart(2, '0')}-01`
@@ -460,6 +529,141 @@ export default function MePage() {
         </div>
       </div>
 
+      {/* ── Section 5: ข้อมูลส่วนตัว ── */}
+      {user.employeeId && (
+        <div className="card !p-0 overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-gray-700">📋 ข้อมูลส่วนตัว</h3>
+            <button onClick={() => { setProfileForm(profileData ?? { phone: '', bank_name: '', bank_account_number: '', bank_account_name: '' }); setShowProfileEdit(true) }}
+              className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+              ✏️ แก้ไข
+            </button>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {[
+              { label: 'เบอร์โทรศัพท์', value: profileData?.phone || '—' },
+              { label: 'ธนาคาร', value: profileData?.bank_name || '—' },
+              { label: 'เลขบัญชี', value: profileData?.bank_account_number ? `****${profileData.bank_account_number.slice(-4)}` : '—' },
+              { label: 'ชื่อบัญชี', value: profileData?.bank_account_name || '—' },
+            ].map(({ label, value }) => (
+              <div key={label} className="flex items-center justify-between px-4 py-3">
+                <p className="text-sm text-gray-500">{label}</p>
+                <p className="text-sm font-medium text-gray-800">{value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Section 6: รหัสผ่าน ── */}
+      <div className="card flex items-center justify-between">
+        <div>
+          <p className="text-sm font-semibold text-gray-700">🔑 รหัสผ่าน</p>
+          <p className="text-xs text-gray-400 mt-0.5">เปลี่ยนรหัสผ่านสำหรับเข้าสู่ระบบ</p>
+        </div>
+        <button onClick={() => { setPwForm({ currentPassword: '', newPassword: '', confirmPassword: '' }); setPwMsg(''); setShowPasswordModal(true) }}
+          className="text-sm px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+          เปลี่ยนรหัสผ่าน
+        </button>
+      </div>
+
+      {/* ── Modal: แก้ไขข้อมูลส่วนตัว ── */}
+      {showProfileEdit && (
+        <div className="modal-backdrop">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-md mx-auto p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-base font-bold text-gray-800">✏️ แก้ไขข้อมูลส่วนตัว</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">เบอร์โทรศัพท์</label>
+                <input type="tel" value={profileForm.phone}
+                  onChange={e => setProfileForm(f => ({ ...f, phone: e.target.value }))}
+                  placeholder="0xx-xxx-xxxx" className="w-full" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">ธนาคาร</label>
+                <select value={profileForm.bank_name}
+                  onChange={e => setProfileForm(f => ({ ...f, bank_name: e.target.value }))}
+                  className="w-full">
+                  <option value="">— เลือกธนาคาร —</option>
+                  {['ธนาคารกรุงเทพ','ธนาคารกสิกรไทย','ธนาคารกรุงไทย','ธนาคารไทยพาณิชย์','ธนาคารกรุงศรีอยุธยา',
+                    'ธนาคารทหารไทยธนชาต','ธนาคารออมสิน','ธนาคารเพื่อการเกษตรและสหกรณ์การเกษตร',
+                    'ธนาคารซีไอเอ็มบีไทย','ธนาคารยูโอบี','ธนาคารแลนด์ แอนด์ เฮ้าส์',
+                    'ธนาคารอาคารสงเคราะห์','ธนาคารอิสลามแห่งประเทศไทย'].map(b => (
+                    <option key={b} value={b}>{b}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">เลขบัญชี</label>
+                <input type="text" value={profileForm.bank_account_number}
+                  onChange={e => setProfileForm(f => ({ ...f, bank_account_number: e.target.value }))}
+                  placeholder="xxx-x-xxxxx-x" className="w-full" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">ชื่อบัญชี</label>
+                <input type="text" value={profileForm.bank_account_name}
+                  onChange={e => setProfileForm(f => ({ ...f, bank_account_name: e.target.value }))}
+                  placeholder="ชื่อ-นามสกุล ตามบัญชี" className="w-full" />
+              </div>
+            </div>
+            {profileMsg && (
+              <p className={`text-sm text-center ${profileMsg.startsWith('✓') ? 'text-green-600' : 'text-red-500'}`}>{profileMsg}</p>
+            )}
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => setShowProfileEdit(false)}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-500 text-sm hover:bg-gray-50">
+                ยกเลิก
+              </button>
+              <button onClick={handleSaveProfile} disabled={savingProfile}
+                className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-60">
+                {savingProfile ? 'กำลังบันทึก...' : 'บันทึก'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal: เปลี่ยนรหัสผ่าน ── */}
+      {showPasswordModal && (
+        <div className="modal-backdrop">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-md mx-auto p-5 space-y-4">
+            <h3 className="text-base font-bold text-gray-800">🔑 เปลี่ยนรหัสผ่าน</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">รหัสผ่านปัจจุบัน</label>
+                <input type="password" value={pwForm.currentPassword}
+                  onChange={e => setPwForm(f => ({ ...f, currentPassword: e.target.value }))}
+                  placeholder="รหัสผ่านที่ใช้อยู่" className="w-full" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">รหัสผ่านใหม่ (อย่างน้อย 8 ตัวอักษร)</label>
+                <input type="password" value={pwForm.newPassword}
+                  onChange={e => setPwForm(f => ({ ...f, newPassword: e.target.value }))}
+                  placeholder="รหัสผ่านใหม่" className="w-full" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">ยืนยันรหัสผ่านใหม่</label>
+                <input type="password" value={pwForm.confirmPassword}
+                  onChange={e => setPwForm(f => ({ ...f, confirmPassword: e.target.value }))}
+                  placeholder="กรอกรหัสผ่านใหม่อีกครั้ง" className="w-full" />
+              </div>
+            </div>
+            {pwMsg && (
+              <p className={`text-sm text-center ${pwMsg.startsWith('✓') ? 'text-green-600' : 'text-red-500'}`}>{pwMsg}</p>
+            )}
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => setShowPasswordModal(false)}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-500 text-sm hover:bg-gray-50">
+                ยกเลิก
+              </button>
+              <button onClick={handleChangePassword} disabled={savingPw}
+                className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-60">
+                {savingPw ? 'กำลังเปลี่ยน...' : 'เปลี่ยนรหัสผ่าน'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   )
