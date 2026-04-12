@@ -32,8 +32,8 @@ export default function EmployeePage() {
     return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1]))
   }, [master])
 
-  const [selectedEmpId, setSelectedEmpId] = useState<string>(() => searchParams.get('empId') ?? '')
-  const [selectedMonth, setSelectedMonth] = useState<string>(() => searchParams.get('month') ?? '')
+  const [selectedEmpId, setSelectedEmpId] = useState<string>(() => searchParams?.get('empId') ?? '')
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => searchParams?.get('month') ?? '')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [holidayDates, setHolidayDates] = useState<Set<string>>(new Set())
@@ -59,7 +59,7 @@ export default function EmployeePage() {
 
   // Init date range from URL param month
   useEffect(() => {
-    const m = searchParams.get('month')
+    const m = searchParams?.get('month')
     if (m) handleMonthSelect(m)
   }, [])
 
