@@ -2,7 +2,7 @@
 
 > ระบบบริหารจัดการพนักงาน บันทึกการเข้างาน เงินเดือน งานผลิต งานส่ง และการเงินบริษัท สำหรับร้านเล็กสติ๊กเกอร์
 
-สร้างโดย **AJ.NUI** &nbsp;|&nbsp; Version **1.4.0**
+สร้างโดย **AJ.NUI** &nbsp;|&nbsp; Version **1.4.1**
 
 ![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
@@ -51,6 +51,12 @@
 ---
 
 ## 🆕 ประวัติการอัปเดต
+
+### v1.4.1 — เมษายน 2569
+- **🔒 Security hardening** — JWT guard ใน production, validate input length login, HSTS + Permissions-Policy headers, finance API validation
+- **⏱️ Session timeout animation** — ตัวเลขนับถอยหลัง slide-in ทีละหลักเมื่อเปลี่ยนค่า
+- **📊 Me page KPI fix** — เดือนปัจจุบันคำนวณจาก attendance จริง (cutoff วันนี้) แทน payroll record ที่อาจล้าสมัย
+- **📈 Production dashboard labels** — แสดงยอดจริงบน bar chart ทุกกราฟ
 
 ### v1.4.0 — เมษายน 2569
 - **🔒 อัปเกรด Next.js 15.5.15** — แก้ช่องโหว่ Denial of Service ใน Server Components (GHSA-q4gf-8mx6-v5v3)
