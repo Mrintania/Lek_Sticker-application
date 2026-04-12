@@ -1,10 +1,14 @@
 import jwt from 'jsonwebtoken'
 import { NextRequest } from 'next/server'
 
-if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
-  throw new Error('JWT_SECRET environment variable is required in production')
-}
 const JWT_SECRET = process.env.JWT_SECRET || 'lek-sticker-dev-secret-key-local-only'
+
+function getSecret(): string {
+  if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET environment variable is required in production')
+  }
+  return JWT_SECRET
+}
 const COOKIE_NAME = 'att_token'
 
 export interface JWTPayload {
@@ -18,12 +22,12 @@ export interface JWTPayload {
 export const SESSION_DURATION_SEC = 60 * 60 * 8 // 8 ชั่วโมง
 
 export function signToken(payload: JWTPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '8h', algorithm: 'HS256' })
+  return jwt.sign(payload, getSecret(), { expiresIn: '8h', algorithm: 'HS256' })
 }
 
 export function verifyToken(token: string): JWTPayload | null {
   try {
-    return jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as JWTPayload
+    return jwt.verify(token, getSecret(), { algorithms: ['HS256'] }) as JWTPayload
   } catch {
     return null
   }
