@@ -488,7 +488,7 @@ export default function ProductionDashboardPage() {
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
                     <Tooltip formatter={(v: unknown) => [Number(v).toLocaleString() + ' ชิ้น', 'ผลผลิต']} />
                     <Bar dataKey="ชิ้น" fill="#6366f1" radius={[4, 4, 0, 0]} maxBarSize={60}>
-                      <LabelList dataKey="ชิ้น" position="top" style={{ fontSize: 11, fill: '#6b7280' }} formatter={(v: unknown) => { const n = Number(v); return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n) }} />
+                      <LabelList dataKey="ชิ้น" position="top" style={{ fontSize: 11, fill: '#6b7280' }} formatter={(v: unknown) => Number(v).toLocaleString()} />
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
@@ -504,7 +504,7 @@ export default function ProductionDashboardPage() {
                       <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
                       <Tooltip formatter={(v: unknown) => [Number(v).toLocaleString() + ' ชิ้น', 'ผลผลิต']} />
                       <Bar dataKey="ชิ้น" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={60}>
-                        <LabelList dataKey="ชิ้น" position="top" style={{ fontSize: 11, fill: '#6b7280' }} formatter={(v: unknown) => { const n = Number(v); return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n) }} />
+                        <LabelList dataKey="ชิ้น" position="top" style={{ fontSize: 11, fill: '#6b7280' }} formatter={(v: unknown) => Number(v).toLocaleString()} />
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
@@ -526,7 +526,7 @@ export default function ProductionDashboardPage() {
                   <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
                   <Tooltip formatter={(v: unknown) => [Number(v).toLocaleString() + ' ชิ้น', 'ผลผลิต']} />
                   <Bar dataKey="ชิ้น" fill="#f59e0b" radius={[4, 4, 0, 0]} maxBarSize={viewMode === 'week' ? 48 : 36}>
-                    <LabelList dataKey="ชิ้น" position="top" style={{ fontSize: 10, fill: '#6b7280' }} formatter={(v: unknown) => { const n = Number(v); return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n) }} />
+                    <LabelList dataKey="ชิ้น" position="top" style={{ fontSize: 10, fill: '#6b7280' }} formatter={(v: unknown) => Number(v).toLocaleString()} />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
