@@ -2,7 +2,7 @@
 
 > ระบบบริหารจัดการพนักงาน บันทึกการเข้างาน เงินเดือน งานผลิต งานส่ง และการเงินบริษัท สำหรับร้านเล็กสติ๊กเกอร์
 
-สร้างโดย **AJ.NUI** &nbsp;|&nbsp; Version **1.5.0**
+สร้างโดย **AJ.NUI** &nbsp;|&nbsp; Version **1.5.1**
 
 ![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
@@ -55,6 +55,17 @@
 ---
 
 ## 🆕 ประวัติการอัปเดต
+
+### v1.5.1 — เมษายน 2569
+
+#### 🔧 Bug Fixes & UI Improvements
+- **🔍 สถานะ "ตรวจสอบ"** — หน้ารายงานรายวัน คอลัมน์ "สาย" จะแสดง "ตรวจสอบ" (สีส้ม) สำหรับพนักงานที่มีสถานะ "ไม่ได้แสกนเข้างาน" แทนการแสดง "ตรงเวลา"
+- **📊 Dashboard ผลผลิต** — เพิ่มปุ่มขยายกราฟเต็มหน้าจอ (Fullscreen Modal) ทุก chart และ table พร้อม ESC ปิดได้
+- **📊 Dashboard ผลผลิต** — แสดงตัวเลขบน bar chart เป็นจำนวนเต็ม มี comma คั่นหลักพัน (เช่น `12,300` แทน `12.3k`)
+- **🔑 Login page** — เพิ่ม Credit footer ด้านล่าง card กึ่งกลางหน้าจอ
+- **🛠️ scripts/pull-db.sh** — เพิ่ม script ดึง `attendance.db` จาก EC2 มา Local พร้อม auto-backup
+
+---
 
 ### v1.5.0 — เมษายน 2569
 

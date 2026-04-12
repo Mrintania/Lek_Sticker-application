@@ -354,7 +354,7 @@ export default function Sidebar() {
             © {new Date().getFullYear()} สร้างโดย{' '}
             <span className="font-semibold text-gray-500">AJ.NUI</span>
           </p>
-          <p className="text-[10px] text-gray-300 text-center mt-0.5">v1.5.0</p>
+          <p className="text-[10px] text-gray-300 text-center mt-0.5">v1.5.1</p>
         </div>
 
       </aside>
