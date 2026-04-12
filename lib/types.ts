@@ -22,6 +22,7 @@ export type AttendanceStatus =
   | 'leave_full_day'
   | 'leave_half_morning'
   | 'leave_half_afternoon'
+  | 'noCheckIn'
 
 export interface Holiday {
   id: number
@@ -103,6 +104,7 @@ export const STATUS_LABELS: Record<AttendanceStatus, string> = {
   leave_full_day: 'ลาทั้งวัน',
   leave_half_morning: 'ลาครึ่งวันเช้า',
   leave_half_afternoon: 'ลาครึ่งวันบ่าย',
+  noCheckIn: 'ไม่ได้แสกนเข้างาน',
 }
 
 export const STATUS_COLORS: Record<AttendanceStatus, string> = {
@@ -118,6 +120,7 @@ export const STATUS_COLORS: Record<AttendanceStatus, string> = {
   leave_full_day: '#f97316',
   leave_half_morning: '#8b5cf6',
   leave_half_afternoon: '#8b5cf6',
+  noCheckIn: '#64748b',
 }
 
 export interface DailySummary {
@@ -170,6 +173,7 @@ export interface MonthlySummary {
   daysAbsent: number
   daysNoCheckout: number
   daysHalfDay: number
+  daysLeave: number
   totalWorkHours: number
   avgWorkHours: number
   attendanceRate: number

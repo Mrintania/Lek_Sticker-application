@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { formatThaiDateShort } from '@/lib/formatters'
 import { SortIcon } from '@/components/shared/SortIcon'
 import { useSortable } from '@/hooks/useSortable'
@@ -81,6 +82,11 @@ export default function LeavesPage() {
   const [loading, setLoading] = useState(false)
 
   const canManage = user?.role === 'admin' || user?.role === 'manager'
+  useEscapeKey(() => {
+    if (showForm) setShowForm(false)
+    else if (rejectModal !== null) setRejectModal(null)
+    else if (editModal !== null) setEditModal(null)
+  }, showForm || rejectModal !== null || editModal !== null)
   const [showDeleted, setShowDeleted] = useState(false)
   const [syncMsg, setSyncMsg] = useState('')
 

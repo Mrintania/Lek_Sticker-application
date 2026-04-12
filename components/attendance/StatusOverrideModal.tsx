@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 
 interface Props {
   employeeId: string
@@ -20,6 +21,7 @@ const STATUS_OPTIONS = [
 ]
 
 export default function StatusOverrideModal({ employeeId, employeeName, date, currentStatus, onClose, onSaved }: Props) {
+  useEscapeKey(onClose)
   const [selected, setSelected] = useState(currentStatus)
   const [note, setNote] = useState('')
   const [loading, setLoading] = useState(false)

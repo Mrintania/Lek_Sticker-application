@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, LabelList } from 'recharts'
 
 interface SummaryData {
@@ -105,6 +106,7 @@ export default function ProductionDashboardPage() {
   const [recordedDates,  setRecordedDates]  = useState<Set<string>>(new Set())
   const [holidayDates,   setHolidayDates]   = useState<Map<string, string>>(new Map())
   const calendarRef = useRef<HTMLDivElement>(null)
+  useEscapeKey(() => setShowCalendar(false), showCalendar)
 
   useEffect(() => {
     if (!userLoading && !canManage && user !== undefined) router.replace('/dashboard')

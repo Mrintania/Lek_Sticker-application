@@ -1,5 +1,6 @@
 'use client'
 import { useState, useMemo, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAttendanceStore } from '@/store/attendanceStore'
 import { getMonthlySummary, getAvailableMonths } from '@/lib/reports'
 import { formatThaiMonthYear, formatHours, formatMinutes, formatCurrency } from '@/lib/formatters'
@@ -16,6 +17,7 @@ type LateSortKey = 'name' | 'daysLate' | 'totalLateMinutes' | 'avgLate'
 export default function MonthlyPage() {
   const { master, settings, loadAttendance, isLoaded } = useAttendanceStore()
   const { user } = useCurrentUser()
+  const router = useRouter()
   const isRegularUser = user?.role === 'user'
   const [employees, setEmployees] = useState<EmployeeProfile[]>([])
 
@@ -189,7 +191,12 @@ export default function MonthlyPage() {
             {/* Mobile cards */}
             <div className="sm:hidden divide-y divide-gray-100">
               {sortedSummary.map((emp) => (
-                <div key={emp.employeeId} className="p-4">
+                <div key={emp.employeeId} className="p-4 cursor-pointer hover:bg-blue-50/50 active:bg-blue-100/50 transition-colors"
+                  onClick={() => {
+                    const ym = selected ? `${selected.year}-${String(selected.month).padStart(2,'0')}` : ''
+                    router.push(`/employee?empId=${emp.employeeId}&month=${ym}`)
+                  }}
+                >
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="min-w-0 flex-1">
                       <p className="font-medium text-gray-800 text-sm">{emp.name}</p>
@@ -247,7 +254,13 @@ export default function MonthlyPage() {
                 </thead>
                 <tbody>
                   {sortedSummary.map((emp) => (
-                    <tr key={emp.employeeId} className="hover:bg-gray-50 transition-colors">
+                    <tr key={emp.employeeId}
+                      className="hover:bg-blue-50 transition-colors cursor-pointer"
+                      onClick={() => {
+                        const ym = selected ? `${selected.year}-${String(selected.month).padStart(2,'0')}` : ''
+                        router.push(`/employee?empId=${emp.employeeId}&month=${ym}`)
+                      }}
+                    >
                       <td className="table-cell font-medium">{emp.name}</td>
                       <td className="table-cell text-center">
                         {emp.employmentType === 'daily' ? (

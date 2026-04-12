@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { EmployeeProfile, EmploymentType } from '@/lib/types'
 import { formatCurrency } from '@/lib/formatters'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
@@ -33,6 +34,10 @@ export default function EmployeesPage() {
   const [form, setForm] = useState<Omit<EmployeeProfile, 'isActive'>>(EMPTY_FORM)
   const [confirmDeactivate, setConfirmDeactivate] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  useEscapeKey(() => {
+    if (showModal) setShowModal(false)
+    else if (confirmDeactivate !== null) setConfirmDeactivate(null)
+  }, showModal || confirmDeactivate !== null)
   const [formError, setFormError] = useState('')
   const [showBankSection, setShowBankSection] = useState(false)
 

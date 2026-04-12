@@ -30,6 +30,7 @@ function determineStatus(
   earlyLeaveMinutes: number,
   settings: WorkSettings
 ): AttendanceStatus {
+  if (!checkIn && checkOut) return 'noCheckIn'
   if (!checkIn) return 'absent'
   if (!checkOut) return 'noCheckout'
   if (workHours !== null && workHours < settings.halfDayHours) return 'halfDay'
@@ -77,8 +78,19 @@ export function buildAttendanceMaster(
       checkOut = deduped[deduped.length - 1]
     } else if (deduped.length === 1) {
       if (settings.singleScanPolicy === 'ignore') continue
-      checkIn = deduped[0]
-      checkOut = null
+      // Determine if this scan is at checkout time (past midpoint of workday)
+      const workStartMins = parseTimeToMinutes(settings.workStartTime)
+      const workEndMins = parseTimeToMinutes(settings.workEndTime)
+      const midpointMins = (workStartMins + workEndMins) / 2
+      const scanMins = getTimeInMinutes(deduped[0])
+      if (scanMins >= midpointMins) {
+        // End-of-day scan: no check-in
+        checkIn = null
+        checkOut = deduped[0]
+      } else {
+        checkIn = deduped[0]
+        checkOut = null
+      }
     }
 
     const workHours = checkIn && checkOut

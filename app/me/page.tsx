@@ -123,6 +123,7 @@ export default function MePage() {
   const currentYear  = today.getFullYear()
   const currentMonth = today.getMonth() + 1
 
+
   useEffect(() => {
     if (!user || userLoading) return
     const start = `${year}-${String(month).padStart(2, '0')}-01`
@@ -459,7 +460,6 @@ export default function MePage() {
           )}
         </div>
       </div>
-
 
     </div>
   )

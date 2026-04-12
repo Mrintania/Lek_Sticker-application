@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { formatCurrency, THAI_MONTHS } from '@/lib/formatters'
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -33,6 +34,11 @@ export default function ExpensesPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const [showApplyConfirm, setShowApplyConfirm] = useState(false)
   const [applying, setApplying] = useState(false)
+  useEscapeKey(() => {
+    if (showModal) setShowModal(false)
+    else if (confirmDeleteId !== null) setConfirmDeleteId(null)
+    else if (showApplyConfirm) setShowApplyConfirm(false)
+  }, showModal || confirmDeleteId !== null || showApplyConfirm)
   const [form, setForm] = useState({ expense_type: 'fixed', category: '', sub_category: '', amount: '', note: '', entry_date: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')

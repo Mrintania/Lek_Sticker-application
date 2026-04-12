@@ -43,6 +43,8 @@ export type AuditAction =
   | 'special_work_day.create'
   | 'special_work_day.delete'
   | 'auth.login.failed'
+  | 'profile.update'
+  | 'profile.password'
 
 export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   'auth.login': 'เข้าสู่ระบบ',
@@ -87,6 +89,8 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   'special_work_day.create': 'เพิ่มวันทำงานพิเศษ',
   'special_work_day.delete': 'ลบวันทำงานพิเศษ',
   'auth.login.failed': 'เข้าสู่ระบบล้มเหลว',
+  'profile.update': 'แก้ไขข้อมูลส่วนตัว',
+  'profile.password': 'เปลี่ยนรหัสผ่าน',
 }
 
 export const AUDIT_ACTION_COLORS: Record<AuditAction, string> = {
@@ -132,6 +136,8 @@ export const AUDIT_ACTION_COLORS: Record<AuditAction, string> = {
   'special_work_day.create': 'bg-purple-100 text-purple-700',
   'special_work_day.delete': 'bg-red-100 text-red-700',
   'auth.login.failed': 'bg-red-100 text-red-700',
+  'profile.update': 'bg-yellow-100 text-yellow-700',
+  'profile.password': 'bg-orange-100 text-orange-700',
 }
 
 export function logAudit(
