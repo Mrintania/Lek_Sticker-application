@@ -283,6 +283,16 @@ export default function ProductionDashboardPage() {
     viewMode === 'week'  ? formatWeekRange(weekStart(selDate), weekEnd(selDate)) :
     `${THAI_MONTHS[selMonth]} ${selYear + 543}`
 
+  // ── Emp-chart card title ──────────────────────────────────────────────────
+  const empChartTitle = (() => {
+    if (viewMode === 'day') {
+      const dt = new Date(selDate + 'T00:00:00')
+      return `ผลงานต่อพนักงาน ${dt.getDate()} ${THAI_MONTHS[dt.getMonth() + 1]} ${dt.getFullYear() + 543}`
+    }
+    const monthLabel = `${THAI_MONTHS[selMonth]} ${selYear + 543}`
+    return `ผลงานต่อพนักงาน (Top 10) ${monthLabel}`
+  })()
+
   return (
     <div className="page-container">
       <div className="page-header">
@@ -524,7 +534,7 @@ export default function ProductionDashboardPage() {
               {empChartData.length > 0 && (
                 <div className="card">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-semibold text-gray-700">ผลงานต่อพนักงาน{viewMode !== 'day' ? ' (Top 10)' : ''}</h3>
+                    <h3 className="text-sm font-semibold text-gray-700">{empChartTitle}</h3>
                     <ExpandBtn panel="emp-chart" />
                   </div>
                   <ResponsiveContainer width="100%" height={220}>
@@ -720,7 +730,7 @@ export default function ProductionDashboardPage() {
                 <div>
                   <h2 className="font-semibold text-gray-800 text-sm sm:text-base">
                     {expandedPanel === 'machine-chart' && 'ผลงานต่อแท่นพิมพ์'}
-                    {expandedPanel === 'emp-chart'     && `ผลงานต่อพนักงาน${viewMode !== 'day' ? ' (Top 10)' : ''}`}
+                    {expandedPanel === 'emp-chart'     && empChartTitle}
                     {expandedPanel === 'daily-chart'   && (viewMode === 'week' ? 'ผลผลิตรายวันในสัปดาห์' : 'แนวโน้มรายวัน')}
                     {expandedPanel === 'machine-table' && 'รายละเอียดต่อแท่นพิมพ์'}
                     {expandedPanel === 'emp-table'     && 'ผลงานต่อพนักงาน'}

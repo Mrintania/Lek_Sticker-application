@@ -5,9 +5,24 @@ import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { formatCurrency, THAI_MONTHS } from '@/lib/formatters'
 
+/** "2026-04-01" → "01-04-2026" */
+function toDisplayDate(s: string): string {
+  if (!s) return ''
+  const [y, m, d] = s.split('-')
+  return `${d}-${m}-${y}`
+}
+
+/** ensure "01-04-2026" or "2026-04-01" → "2026-04-01" for <input type="date"> */
+function toInputDate(s: string): string {
+  if (!s) return ''
+  if (s.includes('-') && s.indexOf('-') === 4) return s // already YYYY-MM-DD
+  const [d, m, y] = s.split('-')
+  return `${y}-${m}-${d}`
+}
+
 const CATEGORY_LABELS: Record<string, string> = {
   car_installment: 'ค่างวดรถ', rent: 'ค่าเช่า', salary_total: 'เงินเดือนรวม',
-  insurance: 'ค่าประกัน', od_interest: 'ดอกเบี้ย OD',
+  insurance: 'ค่าประกัน',
   raw_materials: 'วัตถุดิบ', electricity: 'ค่าไฟ', transport: 'ค่าขนส่ง',
   maintenance: 'ค่าซ่อมบำรุง', ot: 'ค่าโอที', other: 'อื่นๆ',
 }
@@ -74,7 +89,7 @@ export default function ExpensesPage() {
 
   const openEdit = (r: ExpenseRecord) => {
     setEditRecord(r)
-    setForm({ expense_type: r.expense_type, category: r.category, sub_category: r.sub_category ?? '', amount: String(r.amount), note: r.note ?? '', entry_date: r.entry_date })
+    setForm({ expense_type: r.expense_type, category: r.category, sub_category: r.sub_category ?? '', amount: String(r.amount), note: r.note ?? '', entry_date: toInputDate(r.entry_date) })
     setError('')
     setShowModal(true)
   }
@@ -82,7 +97,8 @@ export default function ExpensesPage() {
   const handleSave = async () => {
     if (!form.category || !form.entry_date || !form.amount) { setError('กรุณากรอกข้อมูลให้ครบถ้วน'); return }
     setSaving(true)
-    const body = { year, month, expense_type: form.expense_type, category: form.category, sub_category: form.sub_category, amount: parseFloat(form.amount), note: form.note, entry_date: form.entry_date }
+    const [ey, em] = form.entry_date.split('-')
+    const body = { year: parseInt(ey), month: parseInt(em), expense_type: form.expense_type, category: form.category, sub_category: form.sub_category, amount: parseFloat(form.amount), note: form.note, entry_date: form.entry_date }
     const res = editRecord
       ? await fetch(`/api/finance/expenses/${editRecord.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       : await fetch('/api/finance/expenses', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -108,23 +124,40 @@ export default function ExpensesPage() {
   if (!user) return null
   const canEdit = user.role === 'admin' || user.role === 'manager'
 
-  const RecordTable = ({ items }: { items: ExpenseRecord[] }) => (
+  const RecordTable = ({ items }: { items: ExpenseRecord[] }) => {
+    const [sortKey, setSortKey] = useState<'entry_date' | 'category' | 'amount'>('entry_date')
+    const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+    const toggleSort = (key: typeof sortKey) => {
+      if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+      else { setSortKey(key); setSortDir('asc') }
+    }
+    const sorted = [...items].sort((a, b) => {
+      let cmp = 0
+      if (sortKey === 'entry_date') cmp = a.entry_date.localeCompare(b.entry_date)
+      else if (sortKey === 'category') cmp = (CATEGORY_LABELS[a.category] || a.category).localeCompare(CATEGORY_LABELS[b.category] || b.category, 'th')
+      else if (sortKey === 'amount') cmp = a.amount - b.amount
+      return sortDir === 'asc' ? cmp : -cmp
+    })
+    const SortIcon = ({ col }: { col: typeof sortKey }) => (
+      <span className="ml-1 text-xs">{sortKey === col ? (sortDir === 'asc' ? '▲' : '▼') : <span className="text-gray-300">⇅</span>}</span>
+    )
+    return (
     <>
       <div className="hidden sm:block overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-100">
-              <th className="table-header">วันที่</th>
-              <th className="table-header">หมวดหมู่</th>
+              <th className="table-header cursor-pointer select-none hover:bg-gray-50" onClick={() => toggleSort('entry_date')}>วันที่<SortIcon col="entry_date" /></th>
+              <th className="table-header cursor-pointer select-none hover:bg-gray-50" onClick={() => toggleSort('category')}>หมวดหมู่<SortIcon col="category" /></th>
               <th className="table-header">รายละเอียด</th>
-              <th className="table-header text-right">ยอดเงิน</th>
+              <th className="table-header text-right cursor-pointer select-none hover:bg-gray-50" onClick={() => toggleSort('amount')}>ยอดเงิน<SortIcon col="amount" /></th>
               {canEdit && <th className="table-header text-center">จัดการ</th>}
             </tr>
           </thead>
           <tbody>
-            {items.map(r => (
+            {sorted.map(r => (
               <tr key={r.id} className="hover:bg-gray-50">
-                <td className="table-cell">{r.entry_date}</td>
+                <td className="table-cell">{toDisplayDate(r.entry_date)}</td>
                 <td className="table-cell">
                   <span className="inline-flex items-center gap-1">
                     {CATEGORY_LABELS[r.category] || r.category}
@@ -147,11 +180,11 @@ export default function ExpensesPage() {
         </table>
       </div>
       <div className="sm:hidden divide-y divide-gray-100">
-        {items.map(r => (
+        {sorted.map(r => (
           <div key={r.id} className="p-4 flex justify-between items-start">
             <div>
               <div className="text-sm font-medium text-gray-800">{CATEGORY_LABELS[r.category] || r.category}</div>
-              <div className="text-xs text-gray-500">{r.entry_date} {r.sub_category && `· ${r.sub_category}`}</div>
+              <div className="text-xs text-gray-500">{toDisplayDate(r.entry_date)} {r.sub_category && `· ${r.sub_category}`}</div>
             </div>
             <div className="text-right">
               <div className="font-bold text-red-600">{formatCurrency(r.amount)}</div>
@@ -166,7 +199,8 @@ export default function ExpensesPage() {
         ))}
       </div>
     </>
-  )
+    )
+  }
 
   return (
     <div className="page-container">

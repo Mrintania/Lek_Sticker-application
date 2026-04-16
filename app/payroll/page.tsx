@@ -48,12 +48,18 @@ interface PayrollRecord {
   prompt_pay_id: string | null
 }
 
-interface AdjustmentModal {
+interface PayrollAdjustment {
   id: number
-  name: string
+  payroll_id: number
   type: 'bonus' | 'deduction'
-  currentAmount: number
-  currentNote: string
+  amount: number
+  note: string | null
+  created_at: string
+}
+
+interface AdjustmentModal {
+  payrollId: number
+  name: string
 }
 
 interface DailyRateModal {
@@ -104,6 +110,9 @@ export default function PayrollPage() {
 
   // Adjustment modal
   const [adjustmentModal, setAdjustmentModal] = useState<AdjustmentModal | null>(null)
+  const [adjustments, setAdjustments] = useState<PayrollAdjustment[]>([])
+  const [adjLoading, setAdjLoading] = useState(false)
+  const [adjType, setAdjType] = useState<'bonus' | 'deduction'>('bonus')
   const [adjAmount, setAdjAmount] = useState('')
   const [adjNote, setAdjNote] = useState('')
   const [savingAdj, setSavingAdj] = useState(false)
@@ -164,12 +173,14 @@ export default function PayrollPage() {
   const [detailRecord, setDetailRecord] = useState<PayrollRecord | null>(null)
   const [detailAttendance, setDetailAttendance] = useState<AttendanceRecord[]>([])
   const [detailAbsentDates, setDetailAbsentDates] = useState<{ date: string; type: string }[]>([])
+  const [detailAdjustments, setDetailAdjustments] = useState<PayrollAdjustment[]>([])
   const [loadingDetail, setLoadingDetail] = useState(false)
 
   async function openDetail(r: PayrollRecord) {
     setDetailRecord(r)
     setDetailAttendance([])
     setDetailAbsentDates([])
+    setDetailAdjustments([])
     setLoadingDetail(true)
     try {
       const mm = String(r.month).padStart(2, '0')
@@ -178,11 +189,13 @@ export default function PayrollPage() {
       const periodStart = periodNum === 1 ? `${r.year}-${mm}-01` : `${r.year}-${mm}-16`
       const periodEnd   = periodNum === 1 ? `${r.year}-${mm}-15` : `${r.year}-${mm}-${String(lastDay).padStart(2, '0')}`
 
-      const [attRes, wsRes, holRes] = await Promise.all([
+      const [attRes, wsRes, holRes, adjRes] = await Promise.all([
         fetch(`/api/attendance?start=${periodStart}&end=${periodEnd}&employeeId=${r.employee_id}`),
         fetch(`/api/settings`),
         fetch(`/api/holidays?year=${r.year}`),
+        fetch(`/api/payroll/${r.id}/adjustments`),
       ])
+      if (adjRes.ok) setDetailAdjustments(await adjRes.json())
 
       if (attRes.ok) {
         const data: (AttendanceRecord & { checkIn: string | null; checkOut: string | null })[] = await attRes.json()
@@ -378,29 +391,35 @@ export default function PayrollPage() {
     }
   }
 
-  function openAdjustment(r: PayrollRecord, type: 'bonus' | 'deduction') {
-    const currentAmount = type === 'bonus' ? (r.extra_bonus ?? 0) : (r.extra_deduction ?? 0)
-    const currentNote = type === 'bonus' ? (r.extra_bonus_note ?? '') : (r.extra_deduction_note ?? '')
-    setAdjustmentModal({ id: r.id, name: r.name, type, currentAmount, currentNote })
-    setAdjAmount(currentAmount > 0 ? String(currentAmount) : '')
-    setAdjNote(currentNote)
+  async function openAdjustment(r: PayrollRecord) {
+    setAdjustmentModal({ payrollId: r.id, name: r.name })
+    setAdjType('bonus')
+    setAdjAmount('')
+    setAdjNote('')
+    setAdjLoading(true)
+    const res = await fetch(`/api/payroll/${r.id}/adjustments`)
+    if (res.ok) setAdjustments(await res.json())
+    setAdjLoading(false)
   }
 
   async function handleSaveAdjustment() {
     if (!adjustmentModal) return
-    const amount = Number(adjAmount) || 0
+    const amount = Number(adjAmount)
+    if (!amount || amount <= 0) return
     setSavingAdj(true)
     try {
-      const body = adjustmentModal.type === 'bonus'
-        ? { extra_bonus: amount, extra_bonus_note: adjNote }
-        : { extra_deduction: amount, extra_deduction_note: adjNote }
-      await fetch(`/api/payroll/${adjustmentModal.id}`, {
-        method: 'PATCH',
+      const res = await fetch(`/api/payroll/${adjustmentModal.payrollId}/adjustments`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ type: adjType, amount, note: adjNote }),
       })
-      setAdjustmentModal(null)
-      await loadPayroll()
+      if (res.ok) {
+        setAdjAmount('')
+        setAdjNote('')
+        const res2 = await fetch(`/api/payroll/${adjustmentModal.payrollId}/adjustments`)
+        if (res2.ok) setAdjustments(await res2.json())
+        await loadPayroll()
+      }
     } finally {
       setSavingAdj(false)
     }
@@ -418,6 +437,14 @@ export default function PayrollPage() {
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [adjustmentModal, dailyRateModal, detailRecord, showSettings])
+
+  async function handleDeleteAdjustment(adjId: number) {
+    if (!adjustmentModal) return
+    await fetch(`/api/payroll/${adjustmentModal.payrollId}/adjustments/${adjId}`, { method: 'DELETE' })
+    const res = await fetch(`/api/payroll/${adjustmentModal.payrollId}/adjustments`)
+    if (res.ok) setAdjustments(await res.json())
+    await loadPayroll()
+  }
 
   function handleSort(key: SortKey) {
     if (sortKey === key) {
@@ -1097,31 +1124,17 @@ export default function PayrollPage() {
                         })()}
                       </td>
                       {canManage && (
-                        <td className="table-cell">
-                          <div className="flex gap-1 justify-center">
-                            <button
-                              onClick={() => openAdjustment(r, 'bonus')}
-                              className={`text-xs px-2 py-1 rounded border transition-colors ${
-                                (r.extra_bonus ?? 0) > 0
-                                  ? 'bg-green-100 text-green-700 border-green-300 hover:bg-green-200'
-                                  : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-green-50 hover:text-green-600 hover:border-green-200'
-                              }`}
-                              title="เงินเพิ่มพิเศษ"
-                            >
-                              +เพิ่ม
-                            </button>
-                            <button
-                              onClick={() => openAdjustment(r, 'deduction')}
-                              className={`text-xs px-2 py-1 rounded border transition-colors ${
-                                (r.extra_deduction ?? 0) > 0
-                                  ? 'bg-red-100 text-red-700 border-red-300 hover:bg-red-200'
-                                  : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200'
-                              }`}
-                              title="หักเงิน"
-                            >
-                              -หัก
-                            </button>
-                          </div>
+                        <td className="table-cell text-center">
+                          <button
+                            onClick={() => openAdjustment(r)}
+                            className={`text-xs px-2.5 py-1 rounded border transition-colors ${
+                              (r.extra_bonus ?? 0) > 0 || (r.extra_deduction ?? 0) > 0
+                                ? 'bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200'
+                                : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200'
+                            }`}
+                          >
+                            ✎ ปรับ
+                          </button>
                         </td>
                       )}
                       <td className="table-cell">
@@ -1404,18 +1417,17 @@ export default function PayrollPage() {
                       {detailRecord.diligence_bonus > 0 ? `+${formatCurrency(detailRecord.diligence_bonus)}` : '—'}
                     </span>
                   </div>
-                  {(detailRecord.extra_bonus ?? 0) > 0 && (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-500">เงินเพิ่มพิเศษ{detailRecord.extra_bonus_note ? ` (${detailRecord.extra_bonus_note})` : ''}</span>
-                      <span className="text-green-600 font-medium">+{formatCurrency(detailRecord.extra_bonus)}</span>
+                  {detailAdjustments.map(adj => (
+                    <div key={adj.id} className="flex items-center justify-between text-sm">
+                      <span className="text-gray-500">
+                        {adj.type === 'bonus' ? 'เงินเพิ่มพิเศษ' : 'หัก'}
+                        {adj.note ? ` (${adj.note})` : ''}
+                      </span>
+                      <span className={adj.type === 'bonus' ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
+                        {adj.type === 'bonus' ? '+' : '-'}{formatCurrency(adj.amount)}
+                      </span>
                     </div>
-                  )}
-                  {(detailRecord.extra_deduction ?? 0) > 0 && (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-500">หัก{detailRecord.extra_deduction_note ? ` (${detailRecord.extra_deduction_note})` : ''}</span>
-                      <span className="text-red-600 font-medium">-{formatCurrency(detailRecord.extra_deduction)}</span>
-                    </div>
-                  )}
+                  ))}
                   {detailRecord.deductions > 0 && (
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-500">หัก</span>
@@ -1550,57 +1562,110 @@ export default function PayrollPage() {
 
       {/* Adjustment Modal */}
       {adjustmentModal && (
-        <div className="modal-backdrop">
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-sm">
-            <div className="p-4 sm:p-6 border-b border-gray-100">
-              <h3 className="text-lg font-bold text-gray-900">
-                {adjustmentModal.type === 'bonus' ? 'เงินเพิ่มพิเศษ' : 'หักเงิน'}
-              </h3>
-              <p className="text-sm text-gray-500 mt-1">{adjustmentModal.name}</p>
-            </div>
-            <div className="p-6 space-y-4">
+        <div className="modal-backdrop" onClick={e => { if (e.target === e.currentTarget) setAdjustmentModal(null) }}>
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-lg flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">จำนวนเงิน (บาท)</label>
+                <h3 className="text-lg font-bold text-gray-900">รายการปรับเงิน</h3>
+                <p className="text-sm text-gray-500 mt-0.5">{adjustmentModal.name}</p>
+              </div>
+              <button onClick={() => setAdjustmentModal(null)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
+            </div>
+
+            {/* Existing adjustments list */}
+            <div className="flex-1 overflow-y-auto">
+              {adjLoading ? (
+                <div className="p-6 text-center text-gray-400 text-sm">⏳ กำลังโหลด...</div>
+              ) : adjustments.length === 0 ? (
+                <div className="p-6 text-center text-gray-400 text-sm">ยังไม่มีรายการปรับเงิน</div>
+              ) : (
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-100 bg-gray-50">
+                      <th className="table-header">ประเภท</th>
+                      <th className="table-header text-right">จำนวน</th>
+                      <th className="table-header">หมายเหตุ</th>
+                      <th className="table-header w-12"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {adjustments.map(adj => (
+                      <tr key={adj.id} className="border-b border-gray-50 hover:bg-gray-50">
+                        <td className="table-cell">
+                          {adj.type === 'bonus'
+                            ? <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">+ เพิ่ม</span>
+                            : <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium">- หัก</span>}
+                        </td>
+                        <td className={`table-cell text-right font-semibold ${adj.type === 'bonus' ? 'text-green-600' : 'text-red-600'}`}>
+                          {adj.type === 'bonus' ? '+' : '-'}{formatCurrency(adj.amount)}
+                        </td>
+                        <td className="table-cell text-gray-500 text-sm">{adj.note || '—'}</td>
+                        <td className="table-cell text-center">
+                          <button
+                            onClick={() => handleDeleteAdjustment(adj.id)}
+                            className="text-gray-300 hover:text-red-500 transition-colors text-base leading-none"
+                            title="ลบ"
+                          >
+                            🗑
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-gray-50">
+                      <td className="table-cell text-sm font-medium text-gray-600" colSpan={2}>
+                        สุทธิ:&nbsp;
+                        {(() => {
+                          const net = adjustments.reduce((s, a) => a.type === 'bonus' ? s + a.amount : s - a.amount, 0)
+                          return <span className={net >= 0 ? 'text-green-600' : 'text-red-600'}>{net >= 0 ? '+' : ''}{formatCurrency(net)}</span>
+                        })()}
+                      </td>
+                      <td colSpan={2} />
+                    </tr>
+                  </tfoot>
+                </table>
+              )}
+            </div>
+
+            {/* Add new adjustment form */}
+            <div className="border-t border-gray-100 p-4 sm:p-5 space-y-3 bg-gray-50">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">เพิ่มรายการใหม่</p>
+              <div className="flex gap-2">
+                {(['bonus', 'deduction'] as const).map(t => (
+                  <button key={t} onClick={() => setAdjType(t)}
+                    className={`flex-1 py-1.5 rounded-lg border text-sm font-medium transition-all ${adjType === t
+                      ? t === 'bonus' ? 'bg-green-600 text-white border-green-600' : 'bg-red-600 text-white border-red-600'
+                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
+                    {t === 'bonus' ? '+ เพิ่มเงิน' : '- หักเงิน'}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2">
                 <input
                   type="number"
                   min={0}
-                  className="w-full"
-                  placeholder="เช่น 500"
+                  className="flex-1"
+                  placeholder="จำนวน (บาท)"
                   value={adjAmount}
-                  onChange={(e) => setAdjAmount(e.target.value)}
-                  autoFocus
+                  onChange={e => setAdjAmount(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleSaveAdjustment() }}
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">หมายเหตุ</label>
                 <input
                   type="text"
-                  className="w-full"
-                  placeholder={adjustmentModal.type === 'bonus' ? 'เช่น ค่าทำความสะอาด' : 'เช่น เบิกล่วงหน้า'}
+                  className="flex-1"
+                  placeholder="หมายเหตุ (ไม่บังคับ)"
                   value={adjNote}
-                  onChange={(e) => setAdjNote(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleSaveAdjustment() }}
+                  onChange={e => setAdjNote(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleSaveAdjustment() }}
                 />
-              </div>
-            </div>
-            <div className="p-4 sm:p-6 border-t border-gray-100 flex items-center justify-between gap-3">
-              <button
-                className="text-sm text-gray-400 hover:text-gray-600"
-                onClick={() => {
-                  setAdjAmount('0')
-                  setAdjNote('')
-                }}
-              >
-                ล้างค่า
-              </button>
-              <div className="flex gap-3">
-                <button className="btn-secondary" onClick={() => setAdjustmentModal(null)}>ยกเลิก</button>
                 <button
-                  className={`btn-primary ${adjustmentModal.type === 'deduction' ? '!bg-red-600 hover:!bg-red-700' : ''}`}
                   onClick={handleSaveAdjustment}
-                  disabled={savingAdj}
+                  disabled={savingAdj || !adjAmount || Number(adjAmount) <= 0}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors disabled:opacity-50 ${adjType === 'bonus' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
                 >
-                  {savingAdj ? 'กำลังบันทึก...' : 'บันทึก'}
+                  {savingAdj ? '...' : 'เพิ่ม'}
                 </button>
               </div>
             </div>

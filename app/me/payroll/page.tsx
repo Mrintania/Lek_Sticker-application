@@ -6,6 +6,7 @@ import { formatThaiMonthYear, formatCurrency } from '@/lib/formatters'
 import { PaymentMethod, PAYMENT_METHOD_LABELS, PAYMENT_METHOD_ICONS } from '@/lib/types'
 
 interface PayrollRec {
+  id: number
   employee_id: string
   year: number
   month: number
@@ -36,11 +37,16 @@ interface MonthGroup {
   records: PayrollRec[]
 }
 
+interface PayrollAdjustment {
+  id: number; payroll_id: number; type: 'bonus' | 'deduction'; amount: number; note: string | null
+}
+
 export default function MyPayrollPage() {
   const { user, loading: userLoading } = useCurrentUser()
   const [history, setHistory] = useState<PayrollRec[]>([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<PayrollRec | null>(null)
+  const [selectedAdj, setSelectedAdj] = useState<PayrollAdjustment[]>([])
   const [expandedKey, setExpandedKey] = useState<string | null>(null)
 
   useEscapeKey(() => setSelected(null), selected !== null)
@@ -173,7 +179,12 @@ export default function MyPayrollPage() {
                         <button
                           key={`${p.year}-${p.month}-${p.period}`}
                           className="w-full bg-white rounded-2xl px-4 py-3.5 shadow-sm border border-gray-100 hover:border-blue-200 hover:shadow-md transition-all text-left"
-                          onClick={() => setSelected(p)}
+                          onClick={async () => {
+                            setSelected(p)
+                            setSelectedAdj([])
+                            const res = await fetch(`/api/payroll/${p.id}/adjustments`)
+                            if (res.ok) setSelectedAdj(await res.json())
+                          }}
                         >
                           <div className="flex items-start justify-between gap-3">
                             {/* Left: period badge + attendance */}
@@ -304,20 +315,14 @@ export default function MyPayrollPage() {
                 {selected.diligence_bonus > 0 && (
                   <DetailRow label="เบี้ยขยัน" value={`+${formatCurrency(selected.diligence_bonus)}`} valueClass="text-green-600" />
                 )}
-                {(selected.extra_bonus ?? 0) > 0 && (
+                {selectedAdj.map(adj => (
                   <DetailRow
-                    label={`เงินเพิ่มพิเศษ${selected.extra_bonus_note ? ` (${selected.extra_bonus_note})` : ''}`}
-                    value={`+${formatCurrency(selected.extra_bonus)}`}
-                    valueClass="text-green-600"
+                    key={adj.id}
+                    label={`${adj.type === 'bonus' ? 'เงินเพิ่มพิเศษ' : 'หัก'}${adj.note ? ` (${adj.note})` : ''}`}
+                    value={`${adj.type === 'bonus' ? '+' : '-'}${formatCurrency(adj.amount)}`}
+                    valueClass={adj.type === 'bonus' ? 'text-green-600' : 'text-red-600'}
                   />
-                )}
-                {(selected.extra_deduction ?? 0) > 0 && (
-                  <DetailRow
-                    label={`หัก${selected.extra_deduction_note ? ` (${selected.extra_deduction_note})` : ''}`}
-                    value={`-${formatCurrency(selected.extra_deduction)}`}
-                    valueClass="text-red-600"
-                  />
-                )}
+                ))}
                 {selected.deductions > 0 && (
                   <DetailRow label="หักออก" value={`-${formatCurrency(selected.deductions)}`} valueClass="text-red-600" />
                 )}
