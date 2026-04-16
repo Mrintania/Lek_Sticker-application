@@ -32,7 +32,6 @@ const financeItems: NavItem[] = [
   { href: '/finance', label: 'ภาพรวมการเงิน', icon: '💹' },
   { href: '/finance/income', label: 'รายรับ', icon: '📥' },
   { href: '/finance/expenses', label: 'รายจ่าย', icon: '📤' },
-  { href: '/finance/od', label: 'บัญชี OD', icon: '🏦' },
   { href: '/finance/recurring', label: 'รายจ่ายประจำ', icon: '🔁' },
 ]
 const FINANCE_PATHS = financeItems.map((i) => i.href)
@@ -354,7 +353,7 @@ export default function Sidebar() {
             © {new Date().getFullYear()} สร้างโดย{' '}
             <span className="font-semibold text-gray-500">AJ.NUI</span>
           </p>
-          <p className="text-[10px] text-gray-300 text-center mt-0.5">v1.5.1</p>
+          <p className="text-[10px] text-gray-300 text-center mt-0.5">v1.5.2</p>
         </div>
 
       </aside>

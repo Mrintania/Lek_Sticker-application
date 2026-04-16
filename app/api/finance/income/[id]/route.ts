@@ -10,9 +10,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const body = await req.json() as {
     income_type?: string; quantity?: number; price_per_unit?: number
     amount?: number; category?: string; note?: string; entry_date?: string
+    year?: number; month?: number
   }
 
   let { amount } = body
+
+  // derive year/month from entry_date if provided
+  const entryYear  = body.entry_date ? parseInt(body.entry_date.split('-')[0]) : body.year ?? null
+  const entryMonth = body.entry_date ? parseInt(body.entry_date.split('-')[1]) : body.month ?? null
+
   if (body.income_type === 'print_order' && body.quantity && body.price_per_unit) {
     amount = body.quantity * body.price_per_unit
   }
@@ -23,6 +29,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   db.prepare(
     `UPDATE finance_income SET
+      year = COALESCE(?, year),
+      month = COALESCE(?, month),
       income_type = COALESCE(?, income_type),
       quantity = ?,
       price_per_unit = ?,
@@ -33,6 +41,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       updated_at = datetime('now')
      WHERE id = ?`
   ).run(
+    entryYear, entryMonth,
     body.income_type ?? null, body.quantity ?? null, body.price_per_unit ?? null,
     amount ?? null, body.category?.trim() ?? null, body.note?.trim() ?? null,
     body.entry_date ?? null, id

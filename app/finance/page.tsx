@@ -13,7 +13,7 @@ interface Summary {
   year: number; month: number
   totalIncome: number; totalExpense: number
   totalFixed: number; totalVariable: number
-  netProfit: number; odTotalBalance: number
+  netProfit: number
   expenseByCategory: { category: string; total: number }[]
   incomeByType: { income_type: string; total: number }[]
 }
@@ -22,7 +22,7 @@ interface MonthlyTrend { month: number; income: number; expense: number; net: nu
 
 const CATEGORY_LABELS: Record<string, string> = {
   car_installment: 'ค่างวดรถ', rent: 'ค่าเช่า', salary_total: 'เงินเดือน',
-  insurance: 'ค่าประกัน', od_interest: 'ดอกเบี้ย OD',
+  insurance: 'ค่าประกัน',
   raw_materials: 'วัตถุดิบ', electricity: 'ค่าไฟ', transport: 'ค่าขนส่ง',
   maintenance: 'ค่าซ่อมบำรุง', ot: 'ค่าโอที', other: 'อื่นๆ',
 }
@@ -77,28 +77,24 @@ export default function FinanceDashboard() {
 
       {/* Stat Cards */}
       {loading ? (
-        <div className="stats-grid">
-          {[1, 2, 3, 4].map(i => <div key={i} className="stat-card"><div className="h-8 bg-gray-100 rounded animate-pulse" /></div>)}
+        <div className="flex flex-wrap justify-center gap-4">
+          {[1, 2, 3].map(i => <div key={i} className="stat-card w-64"><div className="h-8 bg-gray-100 rounded animate-pulse" /></div>)}
         </div>
       ) : (
-        <div className="stats-grid">
-          <div className="stat-card">
+        <div className="flex flex-wrap justify-center gap-4">
+          <div className="stat-card w-64">
             <div className="text-xs text-gray-500 mb-1">💰 รายรับรวม</div>
             <div className="text-lg sm:text-xl font-bold text-green-600">{formatCurrency(summary?.totalIncome ?? 0)}</div>
           </div>
-          <div className="stat-card">
+          <div className="stat-card w-64">
             <div className="text-xs text-gray-500 mb-1">💸 รายจ่ายรวม</div>
             <div className="text-lg sm:text-xl font-bold text-red-600">{formatCurrency(summary?.totalExpense ?? 0)}</div>
           </div>
-          <div className="stat-card">
+          <div className="stat-card w-64">
             <div className="text-xs text-gray-500 mb-1">{netIsPositive ? '📈 กำไร' : '📉 ขาดทุน'}</div>
             <div className={`text-lg sm:text-xl font-bold ${netIsPositive ? 'text-blue-600' : 'text-red-600'}`}>
               {formatCurrency(Math.abs(summary?.netProfit ?? 0))}
             </div>
-          </div>
-          <div className="stat-card">
-            <div className="text-xs text-gray-500 mb-1">🏦 OD รวม</div>
-            <div className="text-lg sm:text-xl font-bold text-orange-600">{formatCurrency(summary?.odTotalBalance ?? 0)}</div>
           </div>
         </div>
       )}
@@ -172,15 +168,14 @@ export default function FinanceDashboard() {
       )}
 
       {/* Quick links */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="flex flex-wrap justify-center gap-3">
         {[
           { href: '/finance/income', icon: '📥', label: 'รายรับ', color: 'bg-green-50 border-green-200 hover:bg-green-100' },
           { href: '/finance/expenses', icon: '📤', label: 'รายจ่าย', color: 'bg-red-50 border-red-200 hover:bg-red-100' },
-          { href: '/finance/od', icon: '🏦', label: 'บัญชี OD', color: 'bg-orange-50 border-orange-200 hover:bg-orange-100' },
           { href: '/finance/recurring', icon: '🔁', label: 'รายจ่ายประจำ', color: 'bg-blue-50 border-blue-200 hover:bg-blue-100' },
         ].map(item => (
           <Link key={item.href} href={item.href}
-            className={`card border ${item.color} text-center py-4 transition-all hover:shadow-md cursor-pointer`}>
+            className={`card border ${item.color} text-center py-4 w-36 transition-all hover:shadow-md cursor-pointer`}>
             <div className="text-2xl mb-1">{item.icon}</div>
             <div className="text-sm font-medium text-gray-700">{item.label}</div>
           </Link>

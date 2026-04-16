@@ -10,7 +10,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const body = await req.json() as {
     expense_type?: string; category?: string; sub_category?: string
     amount?: number; note?: string; entry_date?: string
+    year?: number; month?: number
   }
+
+  // derive year/month from entry_date if provided
+  const entryYear  = body.entry_date ? parseInt(body.entry_date.split('-')[0]) : body.year ?? null
+  const entryMonth = body.entry_date ? parseInt(body.entry_date.split('-')[1]) : body.month ?? null
 
   const db = getDb()
   const existing = db.prepare('SELECT id FROM finance_expenses WHERE id = ?').get(id)
@@ -18,6 +23,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   db.prepare(
     `UPDATE finance_expenses SET
+      year         = COALESCE(?, year),
+      month        = COALESCE(?, month),
       expense_type = COALESCE(?, expense_type),
       category     = COALESCE(?, category),
       sub_category = ?,
@@ -27,6 +34,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       updated_at   = datetime('now')
      WHERE id = ?`
   ).run(
+    entryYear, entryMonth,
     body.expense_type ?? null, body.category ?? null, body.sub_category?.trim() ?? null,
     body.amount ?? null, body.note?.trim() ?? null, body.entry_date ?? null, id
   )

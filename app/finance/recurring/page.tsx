@@ -6,7 +6,7 @@ import { useEscapeKey } from '@/hooks/useEscapeKey'
 
 const CATEGORY_LABELS: Record<string, string> = {
   car_installment: 'ค่างวดรถ', rent: 'ค่าเช่า', salary_total: 'เงินเดือนรวม',
-  insurance: 'ค่าประกัน', od_interest: 'ดอกเบี้ย OD',
+  insurance: 'ค่าประกัน',
   raw_materials: 'วัตถุดิบ', electricity: 'ค่าไฟ', transport: 'ค่าขนส่ง',
   maintenance: 'ค่าซ่อมบำรุง', ot: 'ค่าโอที', other: 'อื่นๆ',
 }

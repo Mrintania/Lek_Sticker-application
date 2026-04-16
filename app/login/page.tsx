@@ -146,7 +146,7 @@ export default function LoginPage() {
 
       {/* Credit */}
       <p className="text-center text-xs text-gray-400">
-        © 2569 เล็กสติ๊กเกอร์ &nbsp;·&nbsp; พัฒนาโดย <span className="font-medium text-gray-500">AJ.NUI</span> &nbsp;·&nbsp; v1.5.1
+        © 2569 เล็กสติ๊กเกอร์ &nbsp;·&nbsp; พัฒนาโดย <span className="font-medium text-gray-500">AJ.NUI</span> &nbsp;·&nbsp; v1.5.2
       </p>
     </div>
   )

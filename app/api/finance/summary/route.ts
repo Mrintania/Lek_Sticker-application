@@ -24,14 +24,6 @@ export async function GET(req: NextRequest) {
   const totalVariable = expenseRows.find(r => r.expense_type === 'variable')?.total ?? 0
   const totalExpense = totalFixed + totalVariable
 
-  const odRows = db.prepare(
-    `SELECT COALESCE(SUM(e.balance_used), 0) as total
-     FROM finance_od_entries e
-     JOIN finance_od_accounts a ON a.id = e.od_account_id
-     WHERE e.year = ? AND e.month = ? AND a.is_active = 1`
-  ).get(year, month) as { total: number }
-  const odTotalBalance = odRows.total
-
   const expenseByCategory = db.prepare(
     `SELECT category, COALESCE(SUM(amount), 0) as total
      FROM finance_expenses WHERE year = ? AND month = ?
@@ -51,7 +43,6 @@ export async function GET(req: NextRequest) {
     totalFixed,
     totalVariable,
     netProfit: totalIncome - totalExpense,
-    odTotalBalance,
     expenseByCategory,
     incomeByType,
   })

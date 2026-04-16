@@ -167,6 +167,16 @@ export function getDb(): Database.Database {
       `CREATE INDEX IF NOT EXISTS idx_finance_expenses_type ON finance_expenses(expense_type)`,
       `CREATE INDEX IF NOT EXISTS idx_finance_od_entries_ym ON finance_od_entries(year, month)`,
       `CREATE INDEX IF NOT EXISTS idx_finance_od_entries_account ON finance_od_entries(od_account_id)`,
+      // Multiple adjustments per payroll record
+      `CREATE TABLE IF NOT EXISTS payroll_adjustments (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        payroll_id INTEGER NOT NULL REFERENCES payroll_records(id) ON DELETE CASCADE,
+        type       TEXT NOT NULL CHECK(type IN ('bonus','deduction')),
+        amount     REAL NOT NULL DEFAULT 0,
+        note       TEXT,
+        created_at TEXT DEFAULT (datetime('now'))
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_payroll_adjustments_payroll ON payroll_adjustments(payroll_id)`,
     ]
     for (const sql of migrations) {
       try { db.exec(sql) } catch {}

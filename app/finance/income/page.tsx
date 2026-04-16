@@ -5,8 +5,21 @@ import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { formatCurrency, THAI_MONTHS } from '@/lib/formatters'
 
+function toDisplayDate(s: string): string {
+  if (!s) return ''
+  const [y, m, d] = s.split('-')
+  return `${d}-${m}-${y}`
+}
+
+function toInputDate(s: string): string {
+  if (!s) return ''
+  if (s.includes('-') && s.indexOf('-') === 4) return s
+  const [d, m, y] = s.split('-')
+  return `${y}-${m}-${d}`
+}
+
 const INCOME_TYPE_LABELS: Record<string, string> = {
-  print_order: '🖨️ ยอดส่งพิมพ์',
+  print_order: 'ค่างานพิมพ์',
   other: '📋 รายรับอื่นๆ',
 }
 
@@ -61,7 +74,7 @@ export default function IncomePage() {
     setForm({
       income_type: r.income_type, quantity: r.quantity ? String(r.quantity) : '',
       price_per_unit: r.price_per_unit ? String(r.price_per_unit) : '',
-      amount: String(r.amount), category: r.category ?? '', note: r.note ?? '', entry_date: r.entry_date
+      amount: String(r.amount), category: r.category ?? '', note: r.note ?? '', entry_date: toInputDate(r.entry_date)
     })
     setError('')
     setShowModal(true)
@@ -71,8 +84,9 @@ export default function IncomePage() {
     const amt = parseFloat(computedAmount())
     if (!form.entry_date || isNaN(amt) || amt <= 0) { setError('กรุณากรอกข้อมูลให้ครบถ้วน'); return }
     setSaving(true)
+    const [ey, em] = form.entry_date.split('-')
     const body = {
-      year, month, income_type: form.income_type,
+      year: parseInt(ey), month: parseInt(em), income_type: form.income_type,
       amount: amt, category: form.category, note: form.note, entry_date: form.entry_date
     }
     const res = editRecord
@@ -91,6 +105,23 @@ export default function IncomePage() {
 
   const prevMonth = () => { if (month === 1) { setMonth(12); setYear(y => y - 1) } else setMonth(m => m - 1) }
   const nextMonth = () => { if (month === 12) { setMonth(1); setYear(y => y + 1) } else setMonth(m => m + 1) }
+
+  const [sortKey, setSortKey] = useState<'entry_date' | 'income_type' | 'amount'>('entry_date')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const toggleSort = (key: typeof sortKey) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortKey(key); setSortDir('asc') }
+  }
+  const sortedRecords = [...records].sort((a, b) => {
+    let cmp = 0
+    if (sortKey === 'entry_date') cmp = a.entry_date.localeCompare(b.entry_date)
+    else if (sortKey === 'income_type') cmp = a.income_type.localeCompare(b.income_type)
+    else if (sortKey === 'amount') cmp = a.amount - b.amount
+    return sortDir === 'asc' ? cmp : -cmp
+  })
+  const SortIcon = ({ col }: { col: typeof sortKey }) => (
+    <span className="ml-1 text-xs">{sortKey === col ? (sortDir === 'asc' ? '▲' : '▼') : <span className="text-gray-300">⇅</span>}</span>
+  )
 
   const totalPrint = records.filter(r => r.income_type === 'print_order').reduce((s, r) => s + r.amount, 0)
   const totalOther = records.filter(r => r.income_type === 'other').reduce((s, r) => s + r.amount, 0)
@@ -118,7 +149,7 @@ export default function IncomePage() {
 
       <div className="stats-grid">
         <div className="stat-card">
-          <div className="text-xs text-gray-500 mb-1">🖨️ ยอดส่งพิมพ์</div>
+          <div className="text-xs text-gray-500 mb-1">🖨️ ค่างานพิมพ์</div>
           <div className="text-lg font-bold text-green-600">{formatCurrency(totalPrint)}</div>
         </div>
         <div className="stat-card">
@@ -143,24 +174,20 @@ export default function IncomePage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-100">
-                    <th className="table-header">วันที่</th>
-                    <th className="table-header">ประเภท</th>
+                    <th className="table-header w-32 cursor-pointer select-none hover:bg-gray-50" onClick={() => toggleSort('entry_date')}>วันที่<SortIcon col="entry_date" /></th>
+                    <th className="table-header w-36 cursor-pointer select-none hover:bg-gray-50" onClick={() => toggleSort('income_type')}>ประเภท<SortIcon col="income_type" /></th>
+                    <th className="table-header w-36 text-right cursor-pointer select-none hover:bg-gray-50" onClick={() => toggleSort('amount')}>ยอดเงิน<SortIcon col="amount" /></th>
                     <th className="table-header">รายละเอียด</th>
-                    <th className="table-header text-right">จำนวน × ราคา</th>
-                    <th className="table-header text-right">ยอดเงิน</th>
-                    {canEdit && <th className="table-header text-center">จัดการ</th>}
+                    {canEdit && <th className="table-header w-24 text-center">จัดการ</th>}
                   </tr>
                 </thead>
                 <tbody>
-                  {records.map(r => (
+                  {sortedRecords.map(r => (
                     <tr key={r.id} className="hover:bg-gray-50">
-                      <td className="table-cell">{r.entry_date}</td>
+                      <td className="table-cell">{toDisplayDate(r.entry_date)}</td>
                       <td className="table-cell">{INCOME_TYPE_LABELS[r.income_type] || r.income_type}</td>
-                      <td className="table-cell text-gray-500">{r.category || r.note || '-'}</td>
-                      <td className="table-cell text-right text-gray-500">
-                        {r.quantity && r.price_per_unit ? `${r.quantity.toLocaleString()} × ${r.price_per_unit.toLocaleString()}` : '-'}
-                      </td>
                       <td className="table-cell text-right font-semibold text-green-600">{formatCurrency(r.amount)}</td>
+                      <td className="table-cell text-gray-500">{r.category || r.note || '-'}</td>
                       {canEdit && (
                         <td className="table-cell text-center">
                           <div className="flex justify-center gap-2">
@@ -176,12 +203,12 @@ export default function IncomePage() {
             </div>
             {/* Mobile Cards */}
             <div className="sm:hidden divide-y divide-gray-100">
-              {records.map(r => (
+              {sortedRecords.map(r => (
                 <div key={r.id} className="p-4">
                   <div className="flex justify-between items-start">
                     <div>
                       <div className="text-sm font-medium text-gray-800">{INCOME_TYPE_LABELS[r.income_type]}</div>
-                      <div className="text-xs text-gray-500">{r.entry_date} {r.note && `· ${r.note}`}</div>
+                      <div className="text-xs text-gray-500">{toDisplayDate(r.entry_date)} {r.note && `· ${r.note}`}</div>
                     </div>
                     <div className="text-right">
                       <div className="font-bold text-green-600">{formatCurrency(r.amount)}</div>
